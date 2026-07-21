@@ -54,7 +54,13 @@ export const navItems: NavItem[] = [
   {
     label: "Accounting",
     icon: Landmark,
-    children: [{ label: "Overview", to: "/accounting" }],
+    to: "/accounting",
+    children: [
+      { label: "Payment's", to: "/accounting/payments" },
+      { label: "Budget", to: "/accounting/budget" },
+      { label: "Salary", to: "/accounting/salary" },
+      { label: "Avans", to: "/accounting/avans" },
+    ],
   },
   { label: "Branches", icon: Building2, to: "/branches" },
   { label: "Jobs", icon: Briefcase, to: "/jobs" },

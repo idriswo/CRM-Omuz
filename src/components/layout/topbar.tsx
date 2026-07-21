@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { Bell, Moon, Search, Sun, UserCircle2 } from "lucide-react"
+import { Moon, Search, Sun, UserCircle2 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { NotificationDropdown } from "@/components/layout/notification-dropdown"
 import { useLogoutMutation } from "@/store/services"
 import { useTheme } from "@/components/theme-provider"
 
@@ -40,9 +41,7 @@ export function Topbar() {
       <div className="ml-auto flex items-center gap-4">
         <LanguageSwitcher />
 
-        <button className="relative rounded-md p-2 hover:bg-accent" aria-label="Notifications">
-          <Bell className="size-5 text-primary" />
-        </button>
+        <NotificationDropdown />
 
         <button
           className="rounded-md p-2 hover:bg-accent"

@@ -10,18 +10,26 @@ import { PermissionsPage } from "@/pages/administration/permissions-page"
 import { LogsPage } from "@/pages/administration/logs-page"
 import { ProfilePage } from "@/pages/profile/profile-page"
 import { PlaceholderPage } from "@/pages/placeholder-page"
+import { AccountingOverviewPage } from "@/pages/accounting/accounting-overview-page"
+import { PaymentsPage } from "@/pages/accounting/payments-page"
+import { BudgetPage } from "@/pages/accounting/budget-page"
+import { SalaryPage } from "@/pages/accounting/salary-page"
+import { AvansPage } from "@/pages/accounting/avans-page"
+import { DebtorsPage } from "@/pages/accounting/debtors-page"
+import { ExpensesPage } from "@/pages/accounting/expenses-page"
+import { AccountantPage } from "@/pages/accounting/accountant-page"
+import { NetPage } from "@/pages/accounting/net-page"
+import { SmsMailingsPage } from "@/pages/sms/sms-mailings-page"
+import { DashboardPage } from "@/pages/dashboard/dashboard-page"
 
 const placeholders: [string, string][] = [
-  ["/dashboard", "Dashboard"],
   ["/students", "Students"],
   ["/groups", "Groups"],
   ["/employees", "Employees"],
   ["/progressbook", "Progressbook"],
   ["/timetable", "Timetable"],
   ["/courses", "Courses"],
-  ["/accounting", "Accounting"],
   ["/jobs", "Jobs"],
-  ["/sms-mailings", "SMS mailings"],
 ]
 
 const App = () => {
@@ -38,6 +46,17 @@ const App = () => {
           <Route path="/administration/permissions" element={<PermissionsPage />} />
           <Route path="/administration/logs" element={<LogsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/accounting" element={<AccountingOverviewPage />} />
+          <Route path="/accounting/payments" element={<PaymentsPage />} />
+          <Route path="/accounting/budget" element={<BudgetPage />} />
+          <Route path="/accounting/salary" element={<SalaryPage />} />
+          <Route path="/accounting/avans" element={<AvansPage />} />
+          <Route path="/accounting/debtors" element={<DebtorsPage />} />
+          <Route path="/accounting/expenses" element={<ExpensesPage />} />
+          <Route path="/accounting/accountant" element={<AccountantPage />} />
+          <Route path="/accounting/net" element={<NetPage />} />
+          <Route path="/sms-mailings" element={<SmsMailingsPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           {placeholders.map(([path, title]) => (
             <Route key={path} path={path} element={<PlaceholderPage title={title} />} />
           ))}
