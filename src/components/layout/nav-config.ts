@@ -31,7 +31,14 @@ export const navItems: NavItem[] = [
   {
     label: "Students",
     icon: Users,
-    children: [{ label: "All students", to: "/students" }],
+    children: [
+      { label: "All students", to: "/students" },
+      { label: "Graduates", to: "/students/graduates" },
+      { label: "Leaders", to: "/students/leaders" },
+      { label: "Student activity", to: "/students/activity" },
+      { label: "Left courses", to: "/students/left-courses" },
+      { label: "Enroll students", to: "/students/enroll" },
+    ],
   },
   { label: "Groups", icon: LayoutGrid, to: "/groups" },
   { label: "Employees", icon: UserSquare2, to: "/employees" },

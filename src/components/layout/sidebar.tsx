@@ -6,8 +6,17 @@ import { cn } from "@/lib/utils"
 import { Logo } from "@/components/logo"
 import { navItems, type NavItem } from "./nav-config"
 
+/** Longest matching child wins, so /students/graduates never lights up "All students". */
+function activeChildPath(item: NavItem, pathname: string) {
+  return (
+    item.children
+      ?.filter((child) => pathname === child.to || pathname.startsWith(`${child.to}/`))
+      .sort((a, b) => b.to.length - a.to.length)[0]?.to ?? null
+  )
+}
+
 function isChildActive(item: NavItem, pathname: string) {
-  if (item.children?.some((child) => pathname.startsWith(child.to))) return true
+  if (activeChildPath(item, pathname) !== null) return true
   return !!item.children && !!item.to && pathname.startsWith(item.to)
 }
 
@@ -106,7 +115,7 @@ export function Sidebar() {
                       to={child.to}
                       className={cn(
                         "rounded-md px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                        pathname.startsWith(child.to) &&
+                        activeChildPath(item, pathname) === child.to &&
                           "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                       )}
                     >

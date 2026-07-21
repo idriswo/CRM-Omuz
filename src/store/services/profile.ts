@@ -29,6 +29,40 @@ export interface MyGroup {
   duration: string
 }
 
+export interface RoadmapWeek {
+  week: number
+  score: number
+}
+
+export interface RoadmapGroup {
+  id: number
+  title: string
+  period: string
+  initials: string
+  color: string
+  weeks: RoadmapWeek[]
+  average: number
+}
+
+export interface PerformanceDay {
+  label: string
+  score: number
+  present: string
+  late: string
+  comment: string
+}
+
+export interface Performance {
+  present_hours: number
+  absent_hours: number
+  late_minutes: number
+  group: string
+  week: number
+  days: PerformanceDay[]
+  expense: { month: string; value: number; present: string; late: string; comment: string }[]
+  roadmap: RoadmapGroup[]
+}
+
 export const profileApi = api.injectEndpoints({
   endpoints: (build) => ({
     getProfile: build.query<Profile, void>({
@@ -41,8 +75,16 @@ export const profileApi = api.injectEndpoints({
     getMyGroups: build.query<{ data: MyGroup[] }, void>({
       query: () => ({ url: "/me/groups" }),
     }),
+    getPerformance: build.query<Performance, { week?: number; year?: number } | void>({
+      query: (params) => ({ url: "/me/performance", params: params ?? {} }),
+      providesTags: ["Profile"],
+    }),
   }),
 })
 
-export const { useGetProfileQuery, useGetUpcomingBirthdaysQuery, useGetMyGroupsQuery } =
-  profileApi
+export const {
+  useGetProfileQuery,
+  useGetUpcomingBirthdaysQuery,
+  useGetMyGroupsQuery,
+  useGetPerformanceQuery,
+} = profileApi
