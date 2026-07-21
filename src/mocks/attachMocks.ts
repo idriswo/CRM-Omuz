@@ -12,6 +12,38 @@ import {
   upcomingBirthdays,
   myGroups,
   type AdminUser,
+  payments,
+  budgetRows,
+  budgetChart,
+  salaryRows,
+  avansRows,
+  debtorRows,
+  expenseRows,
+  netRows,
+  accountantRows,
+  accountantChart,
+  accountingStats,
+  accountingChart,
+  studentsPaymentDonut,
+  studentsPaymentGroups,
+  smsTemplates,
+  smsHistory,
+  smsGroups,
+  smsStudents,
+  smsMentors,
+  smsLeads,
+  smsGraduates,
+  dashboardStats,
+  attendanceLog,
+  groupsSummary,
+  leadsChart,
+  attendanceChartDash,
+  incomeThisMonth,
+  enrollChart,
+  enrollList,
+  employedGraduates,
+  leftCourses,
+  appNotifications,
 } from "./data"
 
 function paginate<T>(list: T[], page = 1, limit = 10) {
@@ -174,6 +206,239 @@ export function attachMocks(axiosInstance: AxiosInstance) {
   mock.onGet("/me").reply(200, currentUser)
   mock.onGet("/me/birthdays").reply(200, { data: upcomingBirthdays })
   mock.onGet("/me/groups").reply(200, { data: myGroups })
+
+  // --- Accounting: overview ---
+  mock.onGet("/accounting/overview").reply(200, accountingStats)
+  mock.onGet("/accounting/overview/chart").reply((config) => {
+    const year = Number(config.params?.year) || new Date().getFullYear()
+    return [200, { data: accountingChart(year) }]
+  })
+  mock.onGet("/accounting/overview/students-payment").reply(200, {
+    donut: studentsPaymentDonut,
+    groups: studentsPaymentGroups,
+  })
+
+  // --- Accounting: payments ---
+  mock.onGet("/payments").reply((config) => {
+    const { search, group_id, branch_id, status } = config.params ?? {}
+    const filtered = payments.filter(
+      (p) =>
+        matchesSearch(p.full_name, search) &&
+        (!group_id || group_id === "all" || p.group === group_id) &&
+        (!branch_id || branch_id === "all" || p.branch === branch_id) &&
+        (!status || status === "all" || p.status.toLowerCase() === String(status).toLowerCase())
+    )
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+  mock.onPost("/payments/prepayment").reply(201, { success: true })
+  mock.onPost("/payments").reply((config) => {
+    const body = JSON.parse(config.data)
+    const created = { id: payments.length + 1, discount: 0, status: "Active" as const, ...body }
+    payments.unshift(created)
+    return [201, created]
+  })
+  mock.onPut(/\/payments\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = payments.findIndex((p) => p.id === id)
+    if (idx !== -1) payments[idx] = { ...payments[idx], ...body }
+    return [200, payments[idx]]
+  })
+  mock.onDelete(/\/payments\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const idx = payments.findIndex((p) => p.id === id)
+    if (idx !== -1) payments.splice(idx, 1)
+    return [200, { success: true }]
+  })
+
+  // --- Accounting: budget ---
+  mock.onGet("/accounting/budget/chart").reply((config) => {
+    const { from, to } = config.params ?? {}
+    return [200, { data: budgetChart(Number(from) || 0, Number(to) || 11) }]
+  })
+  mock.onGet("/accounting/budget").reply((config) => {
+    const { status } = config.params ?? {}
+    const filtered = budgetRows.filter((b) => !status || status === "all" || b.status.toLowerCase() === String(status).toLowerCase())
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+  mock.onPost("/accounting/budget").reply((config) => {
+    const body = JSON.parse(config.data)
+    const created = { id: budgetRows.length + 1, status: "Active" as const, ...body }
+    budgetRows.unshift(created)
+    return [201, created]
+  })
+  mock.onPut(/\/accounting\/budget\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = budgetRows.findIndex((b) => b.id === id)
+    if (idx !== -1) budgetRows[idx] = { ...budgetRows[idx], ...body }
+    return [200, budgetRows[idx]]
+  })
+
+  // --- Accounting: salary ---
+  mock.onGet("/accounting/salary").reply((config) => {
+    const { search, date } = config.params ?? {}
+    const filtered = salaryRows.filter((s) => matchesSearch(s.full_name, search) && (!date || date === "all" || s.month === date))
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+  mock.onPost("/accounting/salary").reply((config) => {
+    const body = JSON.parse(config.data)
+    const created = { id: salaryRows.length + 1, status: "Active" as const, ...body }
+    salaryRows.unshift(created)
+    return [201, created]
+  })
+  mock.onPut(/\/accounting\/salary\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = salaryRows.findIndex((s) => s.id === id)
+    if (idx !== -1) salaryRows[idx] = { ...salaryRows[idx], ...body }
+    return [200, salaryRows[idx]]
+  })
+  mock.onDelete(/\/accounting\/salary\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const idx = salaryRows.findIndex((s) => s.id === id)
+    if (idx !== -1) salaryRows.splice(idx, 1)
+    return [200, { success: true }]
+  })
+
+  // --- Accounting: avans ---
+  mock.onGet("/accounting/avans").reply((config) => {
+    const { search, status } = config.params ?? {}
+    const filtered = avansRows.filter((a) => matchesSearch(a.full_name, search) && (!status || status === "all" || a.status === status))
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+  mock.onPut(/\/accounting\/avans\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = avansRows.findIndex((a) => a.id === id)
+    if (idx !== -1) avansRows[idx] = { ...avansRows[idx], ...body }
+    return [200, avansRows[idx]]
+  })
+
+  // --- Accounting: debtors ---
+  mock.onGet("/accounting/debtors").reply((config) => {
+    const { search, status } = config.params ?? {}
+    const filtered = debtorRows.filter((d) => matchesSearch(d.full_name, search) && (!status || status === "all" || d.status.toLowerCase() === String(status).toLowerCase()))
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+  mock.onPost("/accounting/debtors").reply((config) => {
+    const body = JSON.parse(config.data)
+    const created = { id: debtorRows.length + 1, status: "Inprogress" as const, ...body }
+    debtorRows.unshift(created)
+    return [201, created]
+  })
+  mock.onPut(/\/accounting\/debtors\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = debtorRows.findIndex((d) => d.id === id)
+    if (idx !== -1) debtorRows[idx] = { ...debtorRows[idx], ...body }
+    return [200, debtorRows[idx]]
+  })
+
+  // --- Accounting: expenses ---
+  mock.onGet("/accounting/expenses").reply((config) => {
+    const { category, branch_id } = config.params ?? {}
+    const filtered = expenseRows.filter(
+      (e) => (!category || category === "all" || e.name === category) && (!branch_id || branch_id === "all" || e.branch === branch_id)
+    )
+    return [200, { data: filtered }]
+  })
+  mock.onPut(/\/accounting\/expenses\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = expenseRows.findIndex((e) => e.id === id)
+    if (idx !== -1) expenseRows[idx] = { ...expenseRows[idx], ...body }
+    return [200, expenseRows[idx]]
+  })
+
+  // --- Accounting: net ---
+  mock.onGet("/accounting/net").reply((config) => {
+    const { category } = config.params ?? {}
+    const filtered = netRows.filter((n) => !category || category === "all" || n.category === category)
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+
+  // --- Accounting: accountant ---
+  mock.onGet("/accounting/accountant/chart").reply((config) => {
+    const year = Number(config.params?.year) || new Date().getFullYear()
+    return [200, { data: accountantChart(year) }]
+  })
+  mock.onGet("/accounting/accountant").reply((config) => {
+    const { status, branch_id } = config.params ?? {}
+    const filtered = accountantRows.filter(
+      (a) => (!status || status === "all" || a.status.toLowerCase() === String(status).toLowerCase()) && (!branch_id || branch_id === "all" || a.branch === branch_id)
+    )
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+
+  // --- SMS mailings ---
+  mock.onGet("/sms/templates").reply(200, { data: smsTemplates })
+  mock.onPost("/sms/templates").reply((config) => {
+    const body = JSON.parse(config.data)
+    const created = { id: smsTemplates.length + 1, ...body }
+    smsTemplates.unshift(created)
+    return [201, created]
+  })
+  mock.onPut(/\/sms\/templates\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const body = JSON.parse(config.data)
+    const idx = smsTemplates.findIndex((t) => t.id === id)
+    if (idx !== -1) smsTemplates[idx] = { ...smsTemplates[idx], ...body }
+    return [200, smsTemplates[idx]]
+  })
+  mock.onDelete(/\/sms\/templates\/\d+/).reply((config) => {
+    const id = Number(config.url?.split("/").pop())
+    const idx = smsTemplates.findIndex((t) => t.id === id)
+    if (idx !== -1) smsTemplates.splice(idx, 1)
+    return [200, { success: true }]
+  })
+  mock.onGet("/sms/recipients/group").reply(200, { data: smsGroups })
+  mock.onGet("/sms/recipients/students").reply((config) => {
+    const { search } = config.params ?? {}
+    return [200, { data: smsStudents.filter((s) => matchesSearch(s.full_name, search)) }]
+  })
+  mock.onGet("/sms/recipients/mentors").reply((config) => {
+    const { search } = config.params ?? {}
+    return [200, { data: smsMentors.filter((s) => matchesSearch(s.full_name, search)) }]
+  })
+  mock.onGet("/sms/recipients/leads").reply((config) => {
+    const { search } = config.params ?? {}
+    return [200, { data: smsLeads.filter((s) => matchesSearch(s.full_name, search)) }]
+  })
+  mock.onGet("/sms/recipients/graduates").reply((config) => {
+    const { search } = config.params ?? {}
+    return [200, { data: smsGraduates.filter((s) => matchesSearch(s.full_name, search)) }]
+  })
+  mock.onPost("/sms/send").reply(200, { success: true })
+  mock.onGet("/sms/history").reply((config) => {
+    const { search } = config.params ?? {}
+    const filtered = smsHistory.filter((h) => matchesSearch(h.title, search))
+    return [200, paginate(filtered, 1, filtered.length || 1)]
+  })
+
+  // --- Dashboard ---
+  mock.onGet("/dashboard/stats").reply(200, dashboardStats)
+  mock.onGet("/dashboard/attendance-log").reply(200, { data: attendanceLog })
+  mock.onGet("/dashboard/groups-summary").reply(200, { data: groupsSummary })
+  mock.onGet("/dashboard/leads-chart").reply((config) => {
+    const year = Number(config.params?.year) || new Date().getFullYear()
+    return [200, { data: leadsChart(year) }]
+  })
+  mock.onGet("/dashboard/attendance-chart").reply((config) => {
+    const month = config.params?.month ?? "February 2024"
+    return [200, { data: attendanceChartDash(month) }]
+  })
+  mock.onGet("/dashboard/income").reply((config) => {
+    const month = config.params?.month ?? "December"
+    return [200, incomeThisMonth(month)]
+  })
+  mock.onGet("/dashboard/enroll-chart").reply(200, { chart: enrollChart(), data: enrollList })
+  mock.onGet("/dashboard/employed-graduates").reply((config) => {
+    const limit = Number(config.params?.limit) || employedGraduates.length
+    return [200, { data: employedGraduates.slice(0, limit), meta: { total: 215 } }]
+  })
+  mock.onGet("/dashboard/left-courses").reply(200, { data: leftCourses() })
+  mock.onGet("/notifications").reply(200, { data: appNotifications })
 
   mock.onAny().passThrough()
 }
