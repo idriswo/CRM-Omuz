@@ -3,15 +3,21 @@ import { api } from "@/store/api"
 export interface Profile {
   id: number
   full_name: string
-  role: string
+  role: "Admin" | "Mentor" | "Student"
+  status?: string
   registered_at: string
   branch: string
   birth_date: string
   address: string | null
   phone: string
+  father_phone?: string
   email: string
   telegram: string
   avatar: string | null
+  mentor_level?: string
+  hourly_rate?: string
+  notification_channel?: "sms" | "telegram"
+  language?: "ru" | "en" | "tj"
 }
 
 export interface Birthday {
