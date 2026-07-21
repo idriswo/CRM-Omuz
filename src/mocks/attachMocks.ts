@@ -95,8 +95,8 @@ export function attachMocks(axiosInstance: AxiosInstance) {
   mock.onPost("/auth/forgot-password").reply(200, { success: true })
   mock.onPost("/auth/verify-reset-code").reply((config) => {
     const body = JSON.parse(config.data)
-    if (!/^\d{6}$/.test(body.code)) {
-      return [400, { message: "Enter the 6-digit code." }]
+    if (!/^\d{4}$/.test(body.code)) {
+      return [400, { message: "Enter the 4-digit code." }]
     }
     return [200, { success: true }]
   })
