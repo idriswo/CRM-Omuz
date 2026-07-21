@@ -40,7 +40,10 @@ export const navItems: NavItem[] = [
   {
     label: "Courses",
     icon: Layers,
-    children: [{ label: "All courses", to: "/courses" }],
+    children: [
+      { label: "All courses", to: "/courses" },
+      { label: "Leads", to: "/courses/leads" },
+    ],
   },
   {
     label: "Administration",

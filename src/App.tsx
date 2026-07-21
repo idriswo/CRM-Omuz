@@ -9,6 +9,14 @@ import { UsersPage } from "@/pages/administration/users-page"
 import { PermissionsPage } from "@/pages/administration/permissions-page"
 import { LogsPage } from "@/pages/administration/logs-page"
 import { ProfilePage } from "@/pages/profile/profile-page"
+import { EmployeesPage } from "@/pages/employees/employees-page"
+import { AddEmployeePage } from "@/pages/employees/add-employee-page"
+import { MentorLevelsPage } from "@/pages/employees/mentor-levels-page"
+import { CoursesPage } from "@/pages/courses/courses-page"
+import { CourseSyllabusPage } from "@/pages/courses/course-syllabus-page"
+import { LeadsPage } from "@/pages/courses/leads-page"
+import { CouponsPage } from "@/pages/courses/coupons-page"
+import { TimetablePage } from "@/pages/timetable/timetable-page"
 import { PlaceholderPage } from "@/pages/placeholder-page"
 import { AccountingOverviewPage } from "@/pages/accounting/accounting-overview-page"
 import { PaymentsPage } from "@/pages/accounting/payments-page"
@@ -25,10 +33,7 @@ import { DashboardPage } from "@/pages/dashboard/dashboard-page"
 const placeholders: [string, string][] = [
   ["/students", "Students"],
   ["/groups", "Groups"],
-  ["/employees", "Employees"],
   ["/progressbook", "Progressbook"],
-  ["/timetable", "Timetable"],
-  ["/courses", "Courses"],
   ["/jobs", "Jobs"],
 ]
 
@@ -57,6 +62,17 @@ const App = () => {
           <Route path="/accounting/net" element={<NetPage />} />
           <Route path="/sms-mailings" element={<SmsMailingsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+
+          <Route path="/employees" element={<EmployeesPage />} />
+          <Route path="/employees/new" element={<AddEmployeePage />} />
+          <Route path="/employees/mentor-levels" element={<MentorLevelsPage />} />
+
+          <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/courses/:id/syllabus" element={<CourseSyllabusPage />} />
+          <Route path="/courses/leads" element={<LeadsPage />} />
+          <Route path="/courses/coupons" element={<CouponsPage />} />
+
+          <Route path="/timetable" element={<TimetablePage />} />
           {placeholders.map(([path, title]) => (
             <Route key={path} path={path} element={<PlaceholderPage title={title} />} />
           ))}
