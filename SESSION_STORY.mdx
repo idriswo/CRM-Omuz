@@ -1,0 +1,83 @@
+# 📖 SESSION STORY — CRM Omuz (Frontend Design)
+
+> **What is this file?**
+> A running diary of everything Claude does on this project, session by session.
+> When you say **"start"**, Claude reads this file FIRST, so it never gets confused
+> about what was already done — even after the laptop closes or the battery dies.
+>
+> **Rule for Claude:** after finishing any piece of work, write it here BEFORE stopping.
+
+---
+
+## 🎯 Project rules (from team-lead)
+
+- **DESIGN ONLY** — build the frontend UI. Do **NOT** write backend / business logic.
+- Backend will be connected **later**.
+- Design quality must be **high level** (pixel-faithful to the mockups, clean, consistent).
+- Support **light + dark theme** (mockups include both).
+
+## 📦 My assigned slice (folder `3-Employees_Courses_Timetable`)
+
+Source of truth = PNG mockups + `endpoints.md` in that folder. Modules to design:
+
+1. **Employees** (a.k.a. Mentors)
+2. **Courses** (+ Leads/Clients, Coupons, Syllabus/Resources)
+3. **Timetable** (Day / Week / Month)
+
+> Auth, Administration, Branches, Profile were already built by earlier tasks — do not touch them.
+
+## 🧱 Tech stack (already set up)
+
+React 19 · TypeScript · Vite · Tailwind v4 · shadcn/ui (new-york) · Redux Toolkit + RTK Query · react-router v7 · lucide-react · recharts.
+Theme tokens live in `src/index.css` (oklch, light + `.dark`). Path alias `@/` → `src/`.
+
+**Data approach for this slice:** since it's *design only*, pages use **local static mock data**
+(colocated `mock-*.ts` files). No RTK/API wiring — backend comes later.
+
+## 🚀 How to run
+
+```bash
+npm run dev      # Vite dev server → http://localhost:5173
+npm run build    # type-check + build (use to verify no TS errors)
+```
+
+---
+
+## 🗓️ Work log
+
+### 2026-07-21 — Session 1 (setup + kickoff)
+
+- ✅ Read all mockups in `3-Employees_Courses_Timetable/` (Employees grid/list/add/mentor-levels, Courses grid/list/resources/leads/coupons, Timetable day/week/month + dark mode, Profile).
+- ✅ Read `endpoints.md` (API contract for later backend wiring).
+- ✅ Explored existing `CRM-Omuz` codebase, understood conventions (layout, theme, ui primitives, existing pages).
+- ✅ Confirmed Profile page already exists — out of my scope.
+- ✅ Created this SESSION_STORY.mdx.
+
+**Built all 3 modules (design only, static mock data, light + dark theme):**
+
+- ✅ **Employees**
+  - `pages/employees/mock-data.ts` — employees + mentor-levels matrix data
+  - `pages/employees/badges.tsx` — role badge colors + mentor-level colors
+  - `employees-page.tsx` — grid ⇄ list toggle, search + Position/Status filters, role badges, Active/Inactive status
+  - `add-employee-page.tsx` — Basic details form + Photo upload panel, Save/Cancel
+  - `mentor-levels-page.tsx` — 12-month level matrix with year selector
+- ✅ **Courses**
+  - `pages/courses/mock-data.ts` — courses, syllabus, leads, coupons
+  - `course-logo.tsx` — JS / coupon logos
+  - `courses-page.tsx` — grid ⇄ list toggle, search
+  - `course-syllabus-page.tsx` — lesson cards (Lecture/Practice/Exam)
+  - `leads-page.tsx` — table w/ checkboxes + select-all, Transfer/Export/Coupons/Add, filters
+  - `coupons-page.tsx` — coupon cards with active toggle
+- ✅ **Timetable**
+  - `pages/timetable/mock-data.ts` — events, colors, month grid
+  - `timetable-page.tsx` — Day / Week / Month views, colored event blocks, "+N more" day popover
+- ✅ Added `components/ui/textarea.tsx` (was missing).
+- ✅ Wired routes in `App.tsx`; added **Leads** to Courses submenu in `nav-config.ts`.
+- ✅ `npx tsc -b` clean · `npm run build` succeeds.
+- ⚠️ Could NOT visually screenshot (browser tooling declined this session) — verify look in browser at `npm run dev` → localhost:5173.
+
+**Routes added:** `/employees`, `/employees/new`, `/employees/mentor-levels`, `/courses`, `/courses/:id/syllabus`, `/courses/leads`, `/courses/coupons`, `/timetable`.
+
+- ⏳ POSSIBLE NEXT: pixel review vs mockups (spacing/colors), "Add new course/lead/coupon" dialogs, wire filters, dark-theme pass on timetable, connect backend (endpoints.md) — backend later.
+
+<!-- Claude: append new dated entries above this line as work progresses. -->
