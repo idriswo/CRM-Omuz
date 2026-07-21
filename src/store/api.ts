@@ -19,6 +19,12 @@ export const api = createApi({
     "Debtors",
     "Expenses",
     "SmsTemplates",
+    "Students",
+    "Graduates",
+    "LeftCourses",
+    "Groups",
+    "Journal",
+    "Schedule",
   ],
   endpoints: () => ({}),
 })

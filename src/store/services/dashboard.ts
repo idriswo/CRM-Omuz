@@ -98,7 +98,7 @@ export const dashboardApi = api.injectEndpoints({
     getEmployedGraduates: build.query<{ data: EmployedGraduate[]; meta: { total: number } }, { limit?: number } | void>({
       query: (params) => ({ url: "/dashboard/employed-graduates", params: params ?? {} }),
     }),
-    getLeftCourses: build.query<{ data: LeftCoursesPoint[] }, void>({
+    getDashboardLeftCourses: build.query<{ data: LeftCoursesPoint[] }, void>({
       query: () => ({ url: "/dashboard/left-courses" }),
     }),
     getNotifications: build.query<{ data: AppNotification[] }, void>({
@@ -116,6 +116,6 @@ export const {
   useGetIncomeThisMonthQuery,
   useGetEnrollChartQuery,
   useGetEmployedGraduatesQuery,
-  useGetLeftCoursesQuery,
+  useGetDashboardLeftCoursesQuery,
   useGetNotificationsQuery,
 } = dashboardApi

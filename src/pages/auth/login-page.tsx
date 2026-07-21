@@ -13,6 +13,7 @@ import { ForgotPasswordDialog } from "./forgot-password-dialog"
 export function LoginPage() {
   const [tab, setTab] = useState("login")
   const [showPassword, setShowPassword] = useState(false)
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -35,9 +36,13 @@ export function LoginPage() {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
     await register({
-      full_name: form.get("full_name"),
-      phone: form.get("phone"),
-      password: form.get("password"),
+      first_name: String(form.get("first_name")),
+      last_name: String(form.get("last_name")),
+      birth_date: String(form.get("birth_date")),
+      address: String(form.get("address")),
+      phone: String(form.get("phone")),
+      parent_phone: String(form.get("parent_phone")),
+      password: String(form.get("password")),
     }).unwrap()
     setTab("login")
   }
@@ -99,23 +104,27 @@ export function LoginPage() {
 
         <TabsContent value="signup" className="flex flex-col gap-4">
           <form className="flex flex-col gap-4" onSubmit={handleRegister}>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="full_name">Full name</Label>
-              <Input id="full_name" name="full_name" placeholder="Full name" required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="signup_phone">Phone</Label>
-              <Input id="signup_phone" name="phone" placeholder="Phone" required />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="signup_password">Password</Label>
+            <Input name="first_name" placeholder="First name" required />
+            <Input name="last_name" placeholder="Last name" required />
+            <Input name="birth_date" type="date" placeholder="Date of birthday" required />
+            <Input name="address" placeholder="Adress" required />
+            <Input name="phone" placeholder="Phone" required />
+            <Input name="parent_phone" placeholder="Parent's phone" required />
+            <div className="relative">
               <Input
-                id="signup_password"
                 name="password"
-                type="password"
+                type={showSignupPassword ? "text" : "password"}
                 placeholder="Password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowSignupPassword((v) => !v)}
+                className="absolute top-1/2 right-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-label="Toggle password visibility"
+              >
+                {showSignupPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
             </div>
 
             {registerError && (

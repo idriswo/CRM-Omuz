@@ -1,15 +1,15 @@
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react"
-import { CheckCircle2 } from "lucide-react"
+import { useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react"
+import { CheckCircle2, KeyRound, Mail, ShieldCheck } from "lucide-react"
 
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import {
   useForgotPasswordMutation,
@@ -17,18 +17,26 @@ import {
   useVerifyResetCodeMutation,
 } from "@/store/services"
 
-type Step = "email" | "otp" | "reset" | "done"
+type Step = "phone" | "otp" | "reset" | "done"
 
 interface ForgotPasswordDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const OTP_LENGTH = 6
+const OTP_LENGTH = 4
+
+function StepIcon({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-accent">
+      {children}
+    </div>
+  )
+}
 
 export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialogProps) {
-  const [step, setStep] = useState<Step>("email")
-  const [email, setEmail] = useState("")
+  const [step, setStep] = useState<Step>("phone")
+  const [phone, setPhone] = useState("")
   const [code, setCode] = useState<string[]>(Array(OTP_LENGTH).fill(""))
   const [error, setError] = useState<string | null>(null)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -38,8 +46,8 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
   const [resetPassword, { isLoading: resetting }] = useResetPasswordMutation()
 
   const reset = () => {
-    setStep("email")
-    setEmail("")
+    setStep("phone")
+    setPhone("")
     setCode(Array(OTP_LENGTH).fill(""))
     setError(null)
   }
@@ -53,10 +61,10 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
     e.preventDefault()
     setError(null)
     try {
-      await sendCode({ email }).unwrap()
+      await sendCode({ phone }).unwrap()
       setStep("otp")
     } catch {
-      setError("Could not send the code. Check the email and try again.")
+      setError("Could not send the code. Check the phone number and try again.")
     }
   }
 
@@ -76,11 +84,18 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
     }
   }
 
+  const handleRequestNewCode = async () => {
+    setError(null)
+    setCode(Array(OTP_LENGTH).fill(""))
+    otpRefs.current[0]?.focus()
+    await sendCode({ phone })
+  }
+
   const handleVerifyCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     try {
-      await verifyCode({ email, code: code.join("") }).unwrap()
+      await verifyCode({ phone, code: code.join("") }).unwrap()
       setStep("reset")
     } catch {
       setError("Invalid code. Please try again.")
@@ -100,7 +115,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
     }
 
     try {
-      await resetPassword({ email, code: code.join(""), password }).unwrap()
+      await resetPassword({ phone, code: code.join(""), password }).unwrap()
       setStep("done")
     } catch {
       setError("Could not reset the password. Please try again.")
@@ -110,30 +125,41 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
-        {step === "email" && (
+        {step === "phone" && (
           <>
             <DialogHeader>
               <DialogTitle>Forgot password?</DialogTitle>
-              <DialogDescription>
-                Enter your email and we&apos;ll send you a 6-digit code.
-              </DialogDescription>
             </DialogHeader>
+            <StepIcon>
+              <Mail className="size-9 text-primary" />
+            </StepIcon>
+            <div className="text-center">
+              <p className="font-semibold">Verification code</p>
+              <DialogDescription>
+                Don&apos;t worry! We&apos;ll send to your phone number a code to reset your
+                password
+              </DialogDescription>
+            </div>
             <form className="flex flex-col gap-4" onSubmit={handleSendCode}>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="you@gmail.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+              <Input
+                placeholder="Phone"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" size="lg" disabled={sending}>
-                {sending ? "Sending..." : "Send code"}
-              </Button>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={sending}>
+                  {sending ? "Sending..." : "Send code"}
+                </Button>
+              </DialogFooter>
             </form>
           </>
         )}
@@ -141,13 +167,17 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
         {step === "otp" && (
           <>
             <DialogHeader>
-              <DialogTitle>Enter the code</DialogTitle>
-              <DialogDescription>
-                We sent a 6-digit code to <span className="font-medium">{email}</span>.
-              </DialogDescription>
+              <DialogTitle>Forgot password?</DialogTitle>
             </DialogHeader>
+            <StepIcon>
+              <ShieldCheck className="size-9 text-primary" />
+            </StepIcon>
+            <div className="text-center">
+              <p className="font-semibold">Verification code</p>
+              <DialogDescription>Enter the code that you received</DialogDescription>
+            </div>
             <form className="flex flex-col gap-4" onSubmit={handleVerifyCode}>
-              <div className="flex justify-between gap-2">
+              <div className="flex justify-center gap-3">
                 {code.map((digit, i) => (
                   <Input
                     key={i}
@@ -159,15 +189,32 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
                     inputMode="numeric"
                     maxLength={1}
-                    className="h-12 w-11 text-center text-lg font-semibold"
+                    className="h-12 w-12 text-center text-lg font-semibold"
                     autoFocus={i === 0}
                   />
                 ))}
               </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" size="lg" disabled={verifying || code.some((d) => !d)}>
-                {verifying ? "Verifying..." : "Verify code"}
+              <Button
+                type="button"
+                variant="link"
+                className="mx-auto"
+                onClick={handleRequestNewCode}
+              >
+                Request a new code
               </Button>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={verifying || code.some((d) => !d)}>
+                  {verifying ? "Verifying..." : "Confirm"}
+                </Button>
+              </DialogFooter>
             </form>
           </>
         )}
@@ -175,22 +222,33 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
         {step === "reset" && (
           <>
             <DialogHeader>
-              <DialogTitle>Set a new password</DialogTitle>
-              <DialogDescription>Choose a new password for your account.</DialogDescription>
+              <DialogTitle>Reset password</DialogTitle>
             </DialogHeader>
+            <StepIcon>
+              <KeyRound className="size-9 text-primary" />
+            </StepIcon>
+            <p className="text-center font-semibold">Create a new password</p>
             <form className="flex flex-col gap-4" onSubmit={handleResetPassword}>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="new-password">New password</Label>
-                <Input id="new-password" name="password" type="password" required />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="confirm-password">Confirm password</Label>
-                <Input id="confirm-password" name="confirm_password" type="password" required />
-              </div>
+              <Input name="password" type="password" placeholder="New password" required />
+              <Input
+                name="confirm_password"
+                type="password"
+                placeholder="Confirm password"
+                required
+              />
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" size="lg" disabled={resetting}>
-                {resetting ? "Saving..." : "Change password"}
-              </Button>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={resetting}>
+                  {resetting ? "Saving..." : "Confirm"}
+                </Button>
+              </DialogFooter>
             </form>
           </>
         )}

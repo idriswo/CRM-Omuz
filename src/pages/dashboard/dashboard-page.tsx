@@ -45,7 +45,7 @@ import {
   useGetGroupsSummaryQuery,
   useGetIncomeThisMonthQuery,
   useGetLeadsChartQuery,
-  useGetLeftCoursesQuery,
+  useGetDashboardLeftCoursesQuery,
 } from "@/store/services"
 
 function SimpleTooltip({
@@ -87,7 +87,7 @@ export function DashboardPage() {
   const { data: income } = useGetIncomeThisMonthQuery({ month: incomeMonth })
   const { data: enroll } = useGetEnrollChartQuery()
   const { data: graduates } = useGetEmployedGraduatesQuery({ limit: 5 })
-  const { data: leftCourses } = useGetLeftCoursesQuery()
+  const { data: leftCourses } = useGetDashboardLeftCoursesQuery()
 
   const incomePct = income?.percent ?? 0
   const incomeDonut = [

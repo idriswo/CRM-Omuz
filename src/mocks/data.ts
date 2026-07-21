@@ -141,15 +141,21 @@ export const branchChart = (year: number) =>
 export const currentUser = {
   id: 1,
   full_name: "Hojiabdurahim S",
-  role: "Admin",
+  role: "Admin" as "Admin" | "Mentor" | "Student",
+  status: "Active",
   registered_at: "2022-09-15",
   branch: "Sadbarg",
   birth_date: "1995-08-23",
   address: null as string | null,
   phone: "93 435 4943",
+  father_phone: "93 435 4943",
   email: "hojiabdurahims@mail.com",
   telegram: "@hojiabdurahims",
   avatar: null as string | null,
+  mentor_level: "Middle 2",
+  hourly_rate: "35 som",
+  notification_channel: "telegram" as "sms" | "telegram",
+  language: "ru" as "ru" | "en" | "tj",
 }
 
 export const upcomingBirthdays = [

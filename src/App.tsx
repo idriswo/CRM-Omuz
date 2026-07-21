@@ -17,6 +17,18 @@ import { CourseSyllabusPage } from "@/pages/courses/course-syllabus-page"
 import { LeadsPage } from "@/pages/courses/leads-page"
 import { CouponsPage } from "@/pages/courses/coupons-page"
 import { TimetablePage } from "@/pages/timetable/timetable-page"
+import { PerformancePage } from "@/pages/profile/performance-page"
+import { StudentsPage } from "@/pages/students/students-page"
+import { LeadersPage } from "@/pages/students/leaders-page"
+import { StudentActivityPage } from "@/pages/students/student-activity-page"
+import { ContractPage } from "@/pages/students/contract-page"
+import { StudentFormPage } from "@/pages/students/student-form-page"
+import { GraduatesPage } from "@/pages/students/graduates-page"
+import { LeftCoursesPage } from "@/pages/students/left-courses-page"
+import { EnrollStudentsPage } from "@/pages/students/enroll-students-page"
+import { GroupsPage } from "@/pages/groups/groups-page"
+import { GroupDetailPage } from "@/pages/groups/group-detail-page"
+import { JournalPage } from "@/pages/journal/journal-page"
 import { PlaceholderPage } from "@/pages/placeholder-page"
 import { AccountingOverviewPage } from "@/pages/accounting/accounting-overview-page"
 import { PaymentsPage } from "@/pages/accounting/payments-page"
@@ -31,8 +43,6 @@ import { SmsMailingsPage } from "@/pages/sms/sms-mailings-page"
 import { DashboardPage } from "@/pages/dashboard/dashboard-page"
 
 const placeholders: [string, string][] = [
-  ["/students", "Students"],
-  ["/groups", "Groups"],
   ["/progressbook", "Progressbook"],
   ["/jobs", "Jobs"],
 ]
@@ -47,21 +57,23 @@ const App = () => {
 
         <Route element={<MainLayout />}>
           <Route path="/branches" element={<BranchesPage />} />
+          <Route path="/students" element={<StudentsPage />} />
+          <Route path="/students/new" element={<StudentFormPage />} />
+          <Route path="/students/graduates" element={<GraduatesPage />} />
+          <Route path="/students/left-courses" element={<LeftCoursesPage />} />
+          <Route path="/students/enroll" element={<EnrollStudentsPage />} />
+          <Route path="/students/leaders" element={<LeadersPage />} />
+          <Route path="/students/activity" element={<StudentActivityPage />} />
+          <Route path="/students/:id/edit" element={<StudentFormPage />} />
+          <Route path="/students/:id/contract" element={<ContractPage />} />
+          <Route path="/profile/performance" element={<PerformancePage />} />
+          <Route path="/groups" element={<GroupsPage />} />
+          <Route path="/groups/:id" element={<GroupDetailPage />} />
+          <Route path="/groups/:id/journal" element={<JournalPage />} />
           <Route path="/administration/users" element={<UsersPage />} />
           <Route path="/administration/permissions" element={<PermissionsPage />} />
           <Route path="/administration/logs" element={<LogsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/accounting" element={<AccountingOverviewPage />} />
-          <Route path="/accounting/payments" element={<PaymentsPage />} />
-          <Route path="/accounting/budget" element={<BudgetPage />} />
-          <Route path="/accounting/salary" element={<SalaryPage />} />
-          <Route path="/accounting/avans" element={<AvansPage />} />
-          <Route path="/accounting/debtors" element={<DebtorsPage />} />
-          <Route path="/accounting/expenses" element={<ExpensesPage />} />
-          <Route path="/accounting/accountant" element={<AccountantPage />} />
-          <Route path="/accounting/net" element={<NetPage />} />
-          <Route path="/sms-mailings" element={<SmsMailingsPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
 
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/employees/new" element={<AddEmployeePage />} />
@@ -73,6 +85,18 @@ const App = () => {
           <Route path="/courses/coupons" element={<CouponsPage />} />
 
           <Route path="/timetable" element={<TimetablePage />} />
+
+          <Route path="/accounting" element={<AccountingOverviewPage />} />
+          <Route path="/accounting/payments" element={<PaymentsPage />} />
+          <Route path="/accounting/budget" element={<BudgetPage />} />
+          <Route path="/accounting/salary" element={<SalaryPage />} />
+          <Route path="/accounting/avans" element={<AvansPage />} />
+          <Route path="/accounting/debtors" element={<DebtorsPage />} />
+          <Route path="/accounting/expenses" element={<ExpensesPage />} />
+          <Route path="/accounting/accountant" element={<AccountantPage />} />
+          <Route path="/accounting/net" element={<NetPage />} />
+          <Route path="/sms-mailings" element={<SmsMailingsPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           {placeholders.map(([path, title]) => (
             <Route key={path} path={path} element={<PlaceholderPage title={title} />} />
           ))}
