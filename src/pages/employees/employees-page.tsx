@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom"
 import { LayoutGrid, List, Plus, Search, SquarePen, Star, Trash2, UserRound } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { apiErrorMessage } from "@/lib/api-error"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { Pagination } from "@/components/shared/pagination"
+import { Toast } from "@/components/shared/toast"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,6 +38,7 @@ import {
 type View = "grid" | "list"
 
 const ALL = "all"
+const PAGE_SIZE = 12
 
 export function EmployeesPage() {
   const navigate = useNavigate()
@@ -40,12 +46,18 @@ export function EmployeesPage() {
   const [search, setSearch] = useState("")
   const [position, setPosition] = useState<string>(ALL)
   const [branch, setBranch] = useState<string>(ALL)
+  const [page, setPage] = useState(1)
+  const [error, setError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Employee | null>(null)
 
-  const { data, isLoading, isError } = useGetEmployeesQuery({
-    search: search || undefined,
+  const debouncedSearch = useDebouncedValue(search)
+
+  const { data, isLoading, isError, isFetching } = useGetEmployeesQuery({
+    search: debouncedSearch || undefined,
     position: position === ALL ? undefined : position,
     branch_id: branch === ALL ? undefined : Number(branch),
-    limit: 100,
+    page,
+    limit: PAGE_SIZE,
   })
   const { data: branches } = useGetBranchesQuery()
   const [deleteEmployee, { isLoading: deleting }] = useDeleteEmployeeMutation()
@@ -64,10 +76,33 @@ export function EmployeesPage() {
   )
 
   const employees = data?.data ?? []
+  const meta = data?.meta
 
-  const handleDelete = async (employee: Employee) => {
-    if (!confirm(`Delete ${employee.fullName}?`)) return
-    await deleteEmployee(employee.id)
+  /** Any filter change invalidates the current page number. */
+  const resetTo = <T,>(setter: (value: T) => void) => (value: T) => {
+    setter(value)
+    setPage(1)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    const employee = pendingDelete
+    try {
+      await deleteEmployee(employee.id).unwrap()
+      setPendingDelete(null)
+      // Stepping back off a page that no longer exists after the last row went.
+      if (employees.length === 1 && page > 1) setPage((current) => current - 1)
+    } catch (err) {
+      // 409 = the backend refuses because timetable entries / salary / avans
+      // rows still point at this employee.
+      setPendingDelete(null)
+      setError(
+        apiErrorMessage(err, {
+          conflict: `${employee.fullName} can't be deleted — they are still used in a timetable, salary or avans record.`,
+          fallback: `Could not delete ${employee.fullName}.`,
+        })
+      )
+    }
   }
 
   return (
@@ -93,11 +128,14 @@ export function EmployeesPage() {
             placeholder="Search by name"
             className="pl-10"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
           />
         </div>
 
-        <Select value={position} onValueChange={setPosition}>
+        <Select value={position} onValueChange={resetTo(setPosition)}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder="Position" />
           </SelectTrigger>
@@ -111,7 +149,7 @@ export function EmployeesPage() {
           </SelectContent>
         </Select>
 
-        <Select value={branch} onValueChange={setBranch}>
+        <Select value={branch} onValueChange={resetTo(setBranch)}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder="Branch" />
           </SelectTrigger>
@@ -135,13 +173,18 @@ export function EmployeesPage() {
       )}
 
       {view === "grid" ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3",
+            isFetching && "opacity-60 transition-opacity"
+          )}
+        >
           {employees.map((e) => (
             <EmployeeCard
               key={e.id}
               employee={e}
               onEdit={() => navigate(`/employees/${e.id}/edit`)}
-              onDelete={() => handleDelete(e)}
+              onDelete={() => setPendingDelete(e)}
               disabled={deleting}
             />
           ))}
@@ -151,9 +194,36 @@ export function EmployeesPage() {
           employees={employees}
           branchNames={branchNames}
           onEdit={(id) => navigate(`/employees/${id}/edit`)}
-          onDelete={handleDelete}
+          onDelete={setPendingDelete}
           disabled={deleting}
+          fetching={isFetching}
         />
+      )}
+
+      {meta && (
+        <Pagination
+          page={meta.page}
+          limit={meta.limit}
+          total={meta.total}
+          onPageChange={setPage}
+        />
+      )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => !next && setPendingDelete(null)}
+        title="Delete employee?"
+        description={
+          pendingDelete
+            ? `${pendingDelete.fullName} will be removed permanently. This can't be undone.`
+            : undefined
+        }
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
+
+      {error && (
+        <Toast message={error} variant="error" duration={6000} onClose={() => setError(null)} />
       )}
     </div>
   )
@@ -259,15 +329,17 @@ function EmployeeTable({
   onEdit,
   onDelete,
   disabled,
+  fetching,
 }: {
   employees: Employee[]
   branchNames: Map<number, string>
   onEdit: (id: number) => void
   onDelete: (employee: Employee) => void
   disabled: boolean
+  fetching?: boolean
 }) {
   return (
-    <Card className="p-0">
+    <Card className={cn("p-0", fetching && "opacity-60 transition-opacity")}>
       <Table>
         <TableHeader>
           <TableRow className="bg-secondary/60">

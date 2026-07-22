@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom"
 import { LayoutGrid, List, Plus, Search, SquarePen, Trash2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { apiErrorMessage } from "@/lib/api-error"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { Pagination } from "@/components/shared/pagination"
+import { Toast } from "@/components/shared/toast"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -25,14 +30,25 @@ import {
 
 type View = "grid" | "list"
 
+const PAGE_SIZE = 12
+
 export function CoursesPage() {
   const navigate = useNavigate()
   const [view, setView] = useState<View>("grid")
   const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Course | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Course | null>(null)
 
-  const { data, isLoading, isError } = useGetCoursesQuery({ search: search || undefined, limit: 100 })
+  const debouncedSearch = useDebouncedValue(search)
+
+  const { data, isLoading, isError, isFetching } = useGetCoursesQuery({
+    search: debouncedSearch || undefined,
+    page,
+    limit: PAGE_SIZE,
+  })
   /** `GET /courses` has no group count, so it is derived from the real groups list. */
   const { data: groups } = useGetGroupsQuery({ limit: 200 })
   const [deleteCourse, { isLoading: deleting }] = useDeleteCourseMutation()
@@ -47,6 +63,7 @@ export function CoursesPage() {
   }, [groups])
 
   const courses = data?.data ?? []
+  const meta = data?.meta
 
   const openCreate = () => {
     setEditing(null)
@@ -58,9 +75,23 @@ export function CoursesPage() {
     setDialogOpen(true)
   }
 
-  const handleDelete = async (course: Course) => {
-    if (!confirm(`Delete "${course.name}"?`)) return
-    await deleteCourse(course.id)
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    const course = pendingDelete
+    try {
+      await deleteCourse(course.id).unwrap()
+      setPendingDelete(null)
+      if (courses.length === 1 && page > 1) setPage((current) => current - 1)
+    } catch (err) {
+      // 409 = the backend refuses because groups or leads still reference it.
+      setPendingDelete(null)
+      setError(
+        apiErrorMessage(err, {
+          conflict: `"${course.name}" can't be deleted — it still has groups or leads attached.`,
+          fallback: `Could not delete "${course.name}".`,
+        })
+      )
+    }
   }
 
   return (
@@ -79,7 +110,10 @@ export function CoursesPage() {
             placeholder="Search course"
             className="pl-10"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value)
+              setPage(1)
+            }}
           />
         </div>
 
@@ -113,7 +147,12 @@ export function CoursesPage() {
       )}
 
       {view === "grid" ? (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3",
+            isFetching && "opacity-60 transition-opacity"
+          )}
+        >
           {courses.map((c) => (
             <CourseCard
               key={c.id}
@@ -121,7 +160,7 @@ export function CoursesPage() {
               groups={groupsPerCourse.get(c.id) ?? 0}
               onOpen={() => navigate(`/courses/${c.id}/syllabus`)}
               onEdit={() => openEdit(c)}
-              onDelete={() => handleDelete(c)}
+              onDelete={() => setPendingDelete(c)}
               disabled={deleting}
             />
           ))}
@@ -132,12 +171,34 @@ export function CoursesPage() {
           groupsPerCourse={groupsPerCourse}
           onOpen={(id) => navigate(`/courses/${id}/syllabus`)}
           onEdit={openEdit}
-          onDelete={handleDelete}
+          onDelete={setPendingDelete}
           disabled={deleting}
+          fetching={isFetching}
         />
       )}
 
+      {meta && (
+        <Pagination page={meta.page} limit={meta.limit} total={meta.total} onPageChange={setPage} />
+      )}
+
       <CourseDialog open={dialogOpen} onOpenChange={setDialogOpen} course={editing} />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(next) => !next && setPendingDelete(null)}
+        title="Delete course?"
+        description={
+          pendingDelete
+            ? `"${pendingDelete.name}" will be removed permanently. This can't be undone.`
+            : undefined
+        }
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
+
+      {error && (
+        <Toast message={error} variant="error" duration={6000} onClose={() => setError(null)} />
+      )}
     </div>
   )
 }
@@ -209,6 +270,7 @@ function CoursesTable({
   onEdit,
   onDelete,
   disabled,
+  fetching,
 }: {
   courses: Course[]
   groupsPerCourse: Map<number, number>
@@ -216,9 +278,10 @@ function CoursesTable({
   onEdit: (course: Course) => void
   onDelete: (course: Course) => void
   disabled: boolean
+  fetching?: boolean
 }) {
   return (
-    <Card className="p-0">
+    <Card className={cn("p-0", fetching && "opacity-60 transition-opacity")}>
       <Table>
         <TableHeader>
           <TableRow className="bg-secondary/60">

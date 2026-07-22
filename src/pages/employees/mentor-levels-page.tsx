@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Check, SquarePen, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { apiErrorMessage } from "@/lib/api-error"
+import { Toast } from "@/components/shared/toast"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -39,6 +41,7 @@ export function MentorLevelsPage() {
   const [search, setSearch] = useState("")
   const [editing, setEditing] = useState<number | null>(null)
   const [draft, setDraft] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   const { data: levels, isLoading, isError } = useGetMentorLevelsQuery()
   const { data: employees } = useGetEmployeesQuery({ limit: 200 })
@@ -59,8 +62,12 @@ export function MentorLevelsPage() {
 
   const save = async (levelId: number) => {
     if (!draft.trim()) return
-    await updateMentorLevel({ id: levelId, level: draft.trim() })
-    setEditing(null)
+    try {
+      await updateMentorLevel({ id: levelId, level: draft.trim() }).unwrap()
+      setEditing(null)
+    } catch (err) {
+      setError(apiErrorMessage(err, { fallback: "Could not save the mentor level." }))
+    }
   }
 
   return (
@@ -186,6 +193,10 @@ export function MentorLevelsPage() {
         month-by-month history — and creating a level for a mentor who has none — needs new
         endpoints.
       </p>
+
+      {error && (
+        <Toast message={error} variant="error" duration={6000} onClose={() => setError(null)} />
+      )}
     </div>
   )
 }

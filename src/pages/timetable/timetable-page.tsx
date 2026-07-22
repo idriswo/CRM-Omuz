@@ -19,8 +19,17 @@ import { colorForCourse, eventColors, type EventColor } from "./event-colors"
 type ViewMode = "Day" | "Week" | "Month"
 
 const ROW = 78
-const HOURS = Array.from({ length: 13 }, (_, i) => 8 + i) // 08:00 – 20:00
+const DEFAULT_FROM = 8
+const DEFAULT_TO = 20
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/** The grid normally runs 08:00–20:00, but it has to stretch when a lesson
+ * falls outside that window — otherwise those lessons render off-card. */
+function hourRange(events: { startHour: number }[]) {
+  const from = Math.min(DEFAULT_FROM, ...events.map((e) => e.startHour))
+  const to = Math.max(DEFAULT_TO, ...events.map((e) => e.startHour + 1))
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i)
+}
 
 /** `start_time` / `end_time` carry a fixed placeholder date — only the clock
  * matters, and it is stored as sent, so read the UTC parts rather than letting
@@ -215,6 +224,10 @@ function TimeGrid({
   withDayHeader: boolean
 }) {
   const minWidth = withDayHeader ? 1400 : 900
+  const hours = useMemo(
+    () => hourRange(days.flatMap((day) => byDay.get(dayKey(day)) ?? [])),
+    [days, byDay]
+  )
 
   return (
     <Card className="overflow-hidden p-0">
@@ -235,10 +248,10 @@ function TimeGrid({
             </div>
           )}
 
-          <div className="relative flex" style={{ height: HOURS.length * ROW }}>
+          <div className="relative flex" style={{ height: hours.length * ROW }}>
             {/* Hour labels + lines */}
             <div className="w-20 shrink-0">
-              {HOURS.map((hour, i) => (
+              {hours.map((hour, i) => (
                 <div
                   key={hour}
                   className="absolute left-0 pl-6 text-sm text-muted-foreground"
@@ -248,7 +261,7 @@ function TimeGrid({
                 </div>
               ))}
             </div>
-            {HOURS.map((hour, i) => (
+            {hours.map((hour, i) => (
               <div
                 key={`line-${hour}`}
                 className="absolute right-0 left-20 border-t border-dashed border-border"
@@ -280,7 +293,7 @@ function TimeGrid({
                         "absolute inset-x-2 flex gap-3",
                         withDayHeader ? "flex-col" : "flex-row flex-wrap"
                       )}
-                      style={{ top: Math.max(0, hour - HOURS[0]) * ROW + 8 }}
+                      style={{ top: Math.max(0, hour - hours[0]) * ROW + 8 }}
                     >
                       {list.map((event) => (
                         <EventBlock key={event.key} event={event} full={withDayHeader} />
