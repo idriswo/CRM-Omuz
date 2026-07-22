@@ -399,6 +399,13 @@ export function attachMocks(axiosInstance: AxiosInstance) {
     return [200, { success: true }]
   })
   mock.onPut(/\/groups\/\d+\/journal\/\d+\/students\/\d+$/).reply(200, { success: true })
+  mock.onPut(/\/groups\/\d+\/journal\/sheet$/).reply((config) => {
+    const groupId = Number(config.url?.split("/")[2])
+    const { sheet_url } = JSON.parse(config.data ?? "{}")
+    getJournal(groupId).sheet_url = sheet_url || null
+    return [200, { success: true, sheet_url }]
+  })
+  mock.onPost(/\/groups\/\d+\/journal\/sync$/).reply(200, { success: true })
   mock.onGet(/\/groups\/\d+$/).reply((config) => {
     const id = Number(config.url?.split("/").pop())
     const group = groups.find((g) => g.id === id)
