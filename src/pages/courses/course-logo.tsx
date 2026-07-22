@@ -1,38 +1,55 @@
 import { cn } from "@/lib/utils"
-import type { Coupon } from "./mock-data"
 
-// Simple "JS" style badge used across course cards/table.
-export function JsLogo({ className }: { className?: string }) {
+/** Well-known course names get their familiar badge; everything else falls back
+ * to initials + a colour derived from the name, so the logo is a pure function
+ * of real course data (the API has no logo field). */
+const KNOWN: { match: RegExp; label: string; className: string }[] = [
+  { match: /^js|javascript/i, label: "JS", className: "bg-yellow-400 text-neutral-900" },
+  { match: /^ts|typescript/i, label: "TS", className: "bg-blue-500 text-white" },
+  { match: /react/i, label: "⚛", className: "bg-neutral-900 text-cyan-400" },
+  { match: /c\+\+|cpp/i, label: "C++", className: "bg-blue-600 text-white" },
+  { match: /c#|\.net|dotnet/i, label: "C#", className: "bg-violet-600 text-white" },
+  { match: /html|css/i, label: "H5", className: "bg-orange-500 text-white" },
+  { match: /python/i, label: "Py", className: "bg-sky-600 text-white" },
+  { match: /scratch/i, label: "Sc", className: "bg-amber-500 text-white" },
+  { match: /olymp/i, label: "Ol", className: "bg-emerald-600 text-white" },
+]
+
+const FALLBACKS = [
+  "bg-teal-500 text-white",
+  "bg-indigo-500 text-white",
+  "bg-rose-500 text-white",
+  "bg-lime-500 text-neutral-900",
+  "bg-fuchsia-500 text-white",
+]
+
+function initials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return "?"
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  return (words[0][0] + words[1][0]).toUpperCase()
+}
+
+function hash(value: string) {
+  let total = 0
+  for (const char of value) total = (total * 31 + char.charCodeAt(0)) >>> 0
+  return total
+}
+
+export function CourseLogo({ name, className }: { name: string; className?: string }) {
+  const known = KNOWN.find((k) => k.match.test(name))
+  const label = known?.label ?? initials(name)
+  const color = known?.className ?? FALLBACKS[hash(name) % FALLBACKS.length]
+
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full bg-yellow-400 font-extrabold text-neutral-900",
+        "flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold",
+        color,
         className
       )}
     >
-      JS
-    </div>
-  )
-}
-
-const couponLogo: Record<Coupon["logo"], { label: string; className: string }> = {
-  cpp: { label: "C++", className: "bg-blue-500 text-white text-[11px]" },
-  htmlcss: { label: "H5", className: "bg-orange-500 text-white text-xs" },
-  js: { label: "JS", className: "bg-yellow-400 text-neutral-900 text-xs" },
-  react: { label: "⚛", className: "bg-neutral-900 text-cyan-400 text-base" },
-}
-
-export function CouponLogo({ logo, className }: { logo: Coupon["logo"]; className?: string }) {
-  const cfg = couponLogo[logo]
-  return (
-    <div
-      className={cn(
-        "flex size-10 items-center justify-center rounded-full font-extrabold",
-        cfg.className,
-        className
-      )}
-    >
-      {cfg.label}
+      {label}
     </div>
   )
 }

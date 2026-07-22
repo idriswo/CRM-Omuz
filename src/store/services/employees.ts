@@ -1,71 +1,45 @@
 import { api } from "@/store/api"
 import type { Envelope, ListParams } from "./types"
 
-export type EmployeeRole = "Admin" | "Manager" | "Developer" | "Mentor"
-export type EmployeeStatus = "Active" | "Inactive"
-
+/** Exactly what `GET /employees` returns (see backend prisma model `Employee`). */
 export interface Employee {
   id: number
-  fullName: string
   first_name: string
   last_name: string
+  /** Free-text on the backend — real values so far: "mentor", "admin", ... */
+  position: string
   phone: string
   email?: string | null
-  age?: number
-  position: string
-  roles: EmployeeRole[]
-  status: EmployeeStatus
-  branch_id?: number | null
   experience?: number | null
-  mentor_level?: string | null
-  photo?: string
+  branch_id?: number | null
+  created_at?: string
+  mentor_level?: MentorLevel | null
+  /** Derived client-side for display only. */
+  fullName: string
 }
 
+export interface MentorLevel {
+  id: number
+  employee_id: number
+  level: string
+  employee?: Omit<Employee, "fullName" | "mentor_level">
+}
+
+/** Fields `POST /employees` and `PUT /employees/:id` actually persist. */
 export interface EmployeeBody {
   first_name: string
   last_name: string
-  birth_date?: string
-  phone: string
-  email?: string
-  address?: string
   position: string
-  experience?: number
-  branch_id?: number | null
-  telegram_username?: string
-  description?: string
-}
-
-export interface MentorLevelRow {
-  id: number
-  full_name: string
-  level: string
-  hourly_rate: number
-}
-
-function titleCase(value: string) {
-  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase()
-}
-
-/** Backend sends first_name/last_name + a single `position` string, not the
- * fullName/roles[]/status/age shape the UI (built against static mock data) expects. */
-function normalizeEmployee(raw: {
-  id: number
-  first_name: string
-  last_name: string
   phone: string
   email?: string | null
-  position?: string
-  branch_id?: number | null
   experience?: number | null
-  mentor_level?: string | null
-}): Employee {
-  return {
-    ...raw,
-    fullName: [raw.first_name, raw.last_name].filter(Boolean).join(" "),
-    position: raw.position ?? "",
-    roles: raw.position ? [titleCase(raw.position) as EmployeeRole] : [],
-    status: "Active",
-  }
+  branch_id?: number | null
+}
+
+type RawEmployee = Omit<Employee, "fullName">
+
+function withFullName(raw: RawEmployee): Employee {
+  return { ...raw, fullName: [raw.first_name, raw.last_name].filter(Boolean).join(" ") }
 }
 
 export interface EmployeesParams extends ListParams {
@@ -77,22 +51,22 @@ export const employeesApi = api.injectEndpoints({
   endpoints: (build) => ({
     getEmployees: build.query<Envelope<Employee>, EmployeesParams | void>({
       query: (params) => ({ url: "/employees", params: params ?? {} }),
-      transformResponse: (response: Envelope<Employee>) => ({
+      transformResponse: (response: Envelope<RawEmployee>) => ({
         ...response,
-        data: response.data.map(normalizeEmployee),
+        data: response.data.map(withFullName),
       }),
       providesTags: ["Employees"],
     }),
     getEmployee: build.query<Employee, number>({
       query: (id) => ({ url: `/employees/${id}` }),
-      transformResponse: (response: Employee) => normalizeEmployee(response),
+      transformResponse: withFullName,
       providesTags: ["Employees"],
     }),
-    createEmployee: build.mutation<Employee, FormData | EmployeeBody>({
+    createEmployee: build.mutation<RawEmployee, EmployeeBody>({
       query: (data) => ({ url: "/employees", method: "post", data }),
       invalidatesTags: ["Employees"],
     }),
-    updateEmployee: build.mutation<Employee, { id: number; data: Partial<EmployeeBody> }>({
+    updateEmployee: build.mutation<RawEmployee, { id: number; data: Partial<EmployeeBody> }>({
       query: ({ id, data }) => ({ url: `/employees/${id}`, method: "put", data }),
       invalidatesTags: ["Employees"],
     }),
@@ -100,14 +74,13 @@ export const employeesApi = api.injectEndpoints({
       query: (id) => ({ url: `/employees/${id}`, method: "delete" }),
       invalidatesTags: ["Employees"],
     }),
-    getMentorLevels: build.query<{ data: MentorLevelRow[] }, void>({
+
+    /** `GET /employees/mentor-levels` → MentorLevel[] with the employee included. */
+    getMentorLevels: build.query<MentorLevel[], void>({
       query: () => ({ url: "/employees/mentor-levels" }),
-      transformResponse: (response: MentorLevelRow[] | { data: MentorLevelRow[] }) => ({
-        data: Array.isArray(response) ? response : response.data,
-      }),
       providesTags: ["Employees"],
     }),
-    updateMentorLevel: build.mutation<MentorLevelRow, { id: number; level: string }>({
+    updateMentorLevel: build.mutation<MentorLevel, { id: number; level: string }>({
       query: ({ id, level }) => ({
         url: `/employees/mentor-levels/${id}`,
         method: "put",

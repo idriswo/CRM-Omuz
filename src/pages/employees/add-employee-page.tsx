@@ -1,10 +1,11 @@
-import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Calendar, FilePlus2, Trash2 } from "lucide-react"
+import { useState, type FormEvent, type ReactNode } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -12,116 +13,260 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { positions } from "./mock-data"
+import {
+  useCreateEmployeeMutation,
+  useGetBranchesQuery,
+  useGetEmployeeQuery,
+  useGetEmployeesQuery,
+  useUpdateEmployeeMutation,
+  type Employee,
+} from "@/store/services"
+import { positionLabel } from "./employee-format"
 
-const branches = ["Sadbarg", "Profsous"]
+const NO_BRANCH = "none"
+const CUSTOM = "__custom"
+
+interface FormState {
+  first_name: string
+  last_name: string
+  phone: string
+  email: string
+  position: string
+  experience: string
+  branch_id: string
+}
+
+function initialState(employee?: Employee): FormState {
+  return {
+    first_name: employee?.first_name ?? "",
+    last_name: employee?.last_name ?? "",
+    phone: employee?.phone ?? "",
+    email: employee?.email ?? "",
+    position: employee?.position ?? "",
+    experience: employee?.experience == null ? "" : String(employee.experience),
+    branch_id: employee?.branch_id == null ? NO_BRANCH : String(employee.branch_id),
+  }
+}
 
 export function AddEmployeePage() {
+  const { id } = useParams()
+  const employeeId = id ? Number(id) : undefined
+  const isEdit = employeeId != null
+
+  const { data: employee, isLoading } = useGetEmployeeQuery(employeeId!, { skip: !isEdit })
+
+  if (isEdit && isLoading) return <p className="text-muted-foreground">Loading employee…</p>
+  if (isEdit && !employee) return <p className="text-destructive">Employee not found.</p>
+
+  // Remount on identity change so the form starts from the loaded record.
+  return <EmployeeForm key={employee?.id ?? "new"} employee={employee} />
+}
+
+function EmployeeForm({ employee }: { employee?: Employee }) {
   const navigate = useNavigate()
+  const isEdit = employee != null
+
+  const { data: branches } = useGetBranchesQuery()
+  /** No /positions endpoint exists — offer the positions already in use. */
+  const { data: everyone } = useGetEmployeesQuery({ limit: 200 })
+
+  const [createEmployee, { isLoading: creating }] = useCreateEmployeeMutation()
+  const [updateEmployee, { isLoading: updating }] = useUpdateEmployeeMutation()
+
+  const [form, setForm] = useState<FormState>(() => initialState(employee))
+  const [customPosition, setCustomPosition] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  const positions = [...new Set((everyone?.data ?? []).map((e) => e.position).filter(Boolean))]
+  const saving = creating || updating
+
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }))
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setFailed(false)
+    const body = {
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
+      phone: form.phone.trim(),
+      email: form.email.trim() || null,
+      position: form.position.trim(),
+      experience: form.experience === "" ? null : Number(form.experience),
+      branch_id: form.branch_id === NO_BRANCH ? null : Number(form.branch_id),
+    }
+
+    try {
+      if (isEdit) await updateEmployee({ id: employee.id, data: body }).unwrap()
+      else await createEmployee(body).unwrap()
+      navigate("/employees")
+    } catch {
+      setFailed(true)
+    }
+  }
 
   return (
-    <div className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
         <button
+          type="button"
           onClick={() => navigate("/employees")}
           className="rounded-md p-1 hover:bg-accent"
           aria-label="Back"
         >
           <ArrowLeft className="size-6" />
         </button>
-        <h1 className="text-3xl font-bold">Add new employee</h1>
+        <h1 className="text-3xl font-bold">{isEdit ? "Edit employee" : "Add new employee"}</h1>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Basic details */}
         <Card className="gap-5">
           <h2 className="text-xl font-bold">Basic details</h2>
 
-          <Input placeholder="First name" />
-          <Input placeholder="Last name" />
-
-          <div className="relative">
-            <Input placeholder="Birth date" className="pr-10" />
-            <Calendar className="pointer-events-none absolute top-1/2 right-3.5 size-5 -translate-y-1/2 text-muted-foreground" />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="First name" required>
+              <Input
+                required
+                value={form.first_name}
+                onChange={(e) => set("first_name", e.target.value)}
+                placeholder="First name"
+              />
+            </Field>
+            <Field label="Last name" required>
+              <Input
+                required
+                value={form.last_name}
+                onChange={(e) => set("last_name", e.target.value)}
+                placeholder="Last name"
+              />
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input placeholder="Phone number" />
-            <Input placeholder="Email" type="email" />
+            <Field label="Phone number" required>
+              <Input
+                required
+                value={form.phone}
+                onChange={(e) => set("phone", e.target.value)}
+                placeholder="900000000"
+              />
+            </Field>
+            <Field label="Email">
+              <Input
+                type="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="name@omuz.tj"
+              />
+            </Field>
           </div>
 
-          <Input placeholder="Adress" />
-
           <div className="grid grid-cols-[1fr_140px] gap-4">
-            <Select>
+            <Field label="Position" required>
+              {customPosition || positions.length === 0 ? (
+                <Input
+                  required
+                  value={form.position}
+                  onChange={(e) => set("position", e.target.value)}
+                  placeholder="mentor"
+                />
+              ) : (
+                <Select
+                  value={form.position}
+                  onValueChange={(value) => {
+                    if (value === CUSTOM) {
+                      setCustomPosition(true)
+                      set("position", "")
+                    } else {
+                      set("position", value)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-11 w-full">
+                    <SelectValue placeholder="Position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {positionLabel(p)}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={CUSTOM}>Other…</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </Field>
+            <Field label="Experience (years)">
+              <Input
+                type="number"
+                min={0}
+                value={form.experience}
+                onChange={(e) => set("experience", e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <Field label="Branch">
+            <Select value={form.branch_id} onValueChange={(value) => set("branch_id", value)}>
               <SelectTrigger className="h-11 w-full">
-                <SelectValue placeholder="Position" />
+                <SelectValue placeholder="Branch" />
               </SelectTrigger>
               <SelectContent>
-                {positions.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
+                <SelectItem value={NO_BRANCH}>No branch</SelectItem>
+                {(branches?.data ?? []).map((b) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.title}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Experience</label>
-              <Input type="number" defaultValue={0} min={0} />
-            </div>
-          </div>
-
-          <Select>
-            <SelectTrigger className="h-11 w-full">
-              <SelectValue placeholder="Branch" />
-            </SelectTrigger>
-            <SelectContent>
-              {branches.map((b) => (
-                <SelectItem key={b} value={b}>
-                  {b}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Input placeholder="Telegram user name" />
-          <Textarea placeholder="Description" />
+          </Field>
         </Card>
 
-        {/* Photo */}
-        <Card className="h-fit gap-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Photo</h2>
-            <button className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-destructive">
-              <Trash2 className="size-4" /> Remove foto
-            </button>
-          </div>
-
-          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-input px-6 py-14 text-center">
-            <FilePlus2 className="size-12 text-primary" strokeWidth={1.5} />
-            <p className="font-bold">Select file</p>
-            <p className="text-sm text-muted-foreground">
-              Click or drag file to this area to upload
-            </p>
-          </div>
-
-          <div className="flex items-center justify-center gap-3">
-            <Button variant="secondary" className="bg-accent text-accent-foreground hover:bg-accent/80">
-              Choose avatar
-            </Button>
-            <Button disabled>Save</Button>
-          </div>
+        <Card className="h-fit gap-3">
+          <h2 className="text-xl font-bold">Photo</h2>
+          <p className="text-sm text-muted-foreground">
+            The backend's <code>Employee</code> model has no photo field and{" "}
+            <code>POST /employees</code> accepts JSON only, so uploads are disabled until the API
+            supports them.
+          </p>
         </Card>
       </div>
 
+      {failed && (
+        <p className="text-sm text-destructive">
+          Could not save the employee. Check the details and try again.
+        </p>
+      )}
+
       <div className="flex items-center gap-3">
-        <Button size="lg" className="px-8">
-          Save account
+        <Button type="submit" size="lg" className="px-8" disabled={saving}>
+          {saving ? "Saving…" : isEdit ? "Save changes" : "Save account"}
         </Button>
-        <Button variant="outline" size="lg" onClick={() => navigate("/employees")}>
+        <Button type="button" variant="outline" size="lg" onClick={() => navigate("/employees")}>
           Cancel
         </Button>
       </div>
+    </form>
+  )
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string
+  required?: boolean
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label className="text-xs text-muted-foreground">
+        {label}
+        {required && <span className="text-destructive"> *</span>}
+      </Label>
+      {children}
     </div>
   )
 }

@@ -76,3 +76,8 @@ export function homeRouteForRole(role: Role | null): string {
   if (role === "student") return "/student/profile"
   return "/dashboard"
 }
+
+/** Students have their own self-service profile screen; staff share `/profile`. */
+export function profileRouteForRole(role: Role | null): string {
+  return role === "student" ? "/student/profile" : "/profile"
+}

@@ -1,16 +1,67 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, ChevronLeft, ChevronRight, Star } from "lucide-react"
+import { ArrowLeft, Check, SquarePen, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { months, mentorLevelRows } from "./mock-data"
-import { levelColor } from "./badges"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  useGetEmployeesQuery,
+  useGetMentorLevelsQuery,
+  useUpdateMentorLevelMutation,
+} from "@/store/services"
+import { levelColor } from "./employee-format"
+
+/** The backend stores `MentorLevel.level` as free text, so this ladder is a
+ * client-side vocabulary for the picker — anything else can still be typed. */
+const LEVELS = [
+  "Intern",
+  "Junior 1",
+  "Junior 2",
+  "Junior 3",
+  "Middle 1",
+  "Middle 2",
+  "Senior 1",
+  "Senior 2",
+  "Senior 3",
+]
 
 export function MentorLevelsPage() {
   const navigate = useNavigate()
-  const [year, setYear] = useState(2024)
+  const [search, setSearch] = useState("")
+  const [editing, setEditing] = useState<number | null>(null)
+  const [draft, setDraft] = useState("")
+
+  const { data: levels, isLoading, isError } = useGetMentorLevelsQuery()
+  const { data: employees } = useGetEmployeesQuery({ limit: 200 })
+  const [updateMentorLevel, { isLoading: saving }] = useUpdateMentorLevelMutation()
+
+  const rows = useMemo(() => {
+    const byEmployee = new Map((levels ?? []).map((l) => [l.employee_id, l]))
+    return (employees?.data ?? [])
+      .filter((e) => e.position?.toLowerCase() === "mentor" || byEmployee.has(e.id))
+      .map((e) => ({
+        employeeId: e.id,
+        fullName: e.fullName,
+        phone: e.phone,
+        level: byEmployee.get(e.id) ?? null,
+      }))
+      .filter((r) => r.fullName.toLowerCase().includes(search.toLowerCase()))
+  }, [levels, employees, search])
+
+  const save = async (levelId: number) => {
+    if (!draft.trim()) return
+    await updateMentorLevel({ id: levelId, level: draft.trim() })
+    setEditing(null)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,64 +77,115 @@ export function MentorLevelsPage() {
           <h1 className="text-3xl font-bold">Mentor levels</h1>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-lg border border-input bg-card px-2 py-1.5">
-            <button
-              onClick={() => setYear((y) => y - 1)}
-              className="rounded p-1 hover:bg-accent"
-              aria-label="Previous year"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <span className="min-w-[90px] text-center text-sm font-medium">{year} year</span>
-            <button
-              onClick={() => setYear((y) => y + 1)}
-              className="rounded p-1 hover:bg-accent"
-              aria-label="Next year"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
-          <Button size="lg">
-            <Star /> Levels
-          </Button>
-        </div>
+        <Input
+          placeholder="Search mentor"
+          className="w-full max-w-xs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
+
+      {isLoading && <p className="text-sm text-muted-foreground">Loading mentor levels…</p>}
+      {isError && <p className="text-sm text-destructive">Could not load mentor levels.</p>}
 
       <Card className="overflow-x-auto p-0">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border">
-              <th className="sticky left-0 z-10 bg-card px-5 py-4 text-left font-semibold text-muted-foreground">
-                FULL NAME
-              </th>
-              {months.map((m) => (
-                <th key={m} className="px-3 py-4 text-center font-semibold">
-                  {m}
-                </th>
-              ))}
+            <tr className="border-b border-border bg-secondary/60 text-left text-muted-foreground">
+              <th className="px-5 py-4 font-semibold">FULL NAME</th>
+              <th className="px-5 py-4 font-semibold">PHONE</th>
+              <th className="px-5 py-4 font-semibold">CURRENT LEVEL</th>
+              <th className="px-5 py-4 text-right font-semibold">ACTION</th>
             </tr>
           </thead>
           <tbody>
-            {mentorLevelRows.map((row) => (
-              <tr key={row.id} className="border-b border-border/60 last:border-0">
-                <td className="sticky left-0 z-10 bg-card px-5 py-4 font-medium whitespace-nowrap">
-                  {row.fullName}
+            {rows.map((row) => (
+              <tr key={row.employeeId} className="border-b border-border/60 last:border-0">
+                <td className="px-5 py-4 font-medium whitespace-nowrap">{row.fullName}</td>
+                <td className="px-5 py-4 text-muted-foreground">{row.phone}</td>
+                <td className="px-5 py-4">
+                  {row.level && editing === row.level.id ? (
+                    <Select value={draft} onValueChange={setDraft}>
+                      <SelectTrigger className="w-44">
+                        <SelectValue placeholder="Level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[...new Set([...LEVELS, row.level.level].filter(Boolean))].map((l) => (
+                          <SelectItem key={l} value={l}>
+                            {l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : row.level ? (
+                    <span className={cn("font-semibold", levelColor(row.level.level))}>
+                      {row.level.level}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Not set</span>
+                  )}
                 </td>
-                {row.levels.map((level, i) => (
-                  <td key={i} className="px-3 py-4 text-center whitespace-nowrap">
-                    {level && (
-                      <span className={cn("text-sm font-semibold", levelColor(level))}>
-                        {level}
-                      </span>
+                <td className="px-5 py-4">
+                  <div className="flex items-center justify-end gap-1">
+                    {row.level && editing === row.level.id ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Save level"
+                          disabled={saving}
+                          onClick={() => save(row.level!.id)}
+                        >
+                          <Check className="size-4 text-success" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Cancel"
+                          onClick={() => setEditing(null)}
+                        >
+                          <X className="size-4 text-muted-foreground" />
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Edit level"
+                        disabled={!row.level}
+                        title={
+                          row.level
+                            ? "Edit level"
+                            : "No mentor-level record — the API has no endpoint to create one"
+                        }
+                        onClick={() => {
+                          setEditing(row.level!.id)
+                          setDraft(row.level!.level)
+                        }}
+                      >
+                        <SquarePen className="size-4 text-primary" />
+                      </Button>
                     )}
-                  </td>
-                ))}
+                  </div>
+                </td>
               </tr>
             ))}
+            {rows.length === 0 && !isLoading && (
+              <tr>
+                <td colSpan={4} className="px-5 py-8 text-center text-muted-foreground">
+                  No mentors yet.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </Card>
+
+      <p className="text-sm text-muted-foreground">
+        The API stores one current level per mentor (<code>GET /employees/mentor-levels</code>). A
+        month-by-month history — and creating a level for a mentor who has none — needs new
+        endpoints.
+      </p>
     </div>
   )
 }

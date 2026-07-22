@@ -80,4 +80,46 @@ npm run build    # type-check + build (use to verify no TS errors)
 
 - ⏳ POSSIBLE NEXT: pixel review vs mockups (spacing/colors), "Add new course/lead/coupon" dialogs, wire filters, dark-theme pass on timetable, connect backend (endpoints.md) — backend later.
 
+### 2026-07-22 — Session 2 (de-mock: wire Employees / Courses / Timetable / Profile to the real API)
+
+**Context found:** the real backend source lives at `C:\Users\acer\Desktop\CRM-Omuz-Bekend`
+(Express + Prisma + Postgres, deployed on Render). Swagger UI is at **`/api-docs`** — *not*
+`/api/docs` (that path is behind the auth middleware and answers `401 No token`). The whole
+`/api/*` surface requires a Bearer token; the seeded bootstrap login is the `director` from
+`prisma/seed.ts`.
+
+**Audit result:** the pages listed above were built on colocated `mock-*.ts` files. Only the
+Employees and Courses *lists* were talking to the API; everything else (mentor levels, syllabus,
+leads, coupons, the entire timetable, and three profile endpoints) was static or pointed at routes
+that return 404.
+
+**Done — every page now reads/writes the real API:**
+
+- ✅ **Services rewritten to the true payload shapes** (`employees`, `courses`, `timetable`,
+  `profile`) — dropped the invented `status`/`age`/`roles[]`/`fee`/`groups` normalisers that
+  fabricated data the backend never sent.
+- ✅ **Employees** — list with real `search` / `position` / `branch_id` filters, real delete,
+  new `/employees/:id/edit` route; Add/Edit form posts the fields the API actually persists.
+- ✅ **Mentor levels** — real `GET /employees/mentor-levels` + inline `PUT` (the 12-month matrix
+  is impossible: the model stores one current level per mentor).
+- ✅ **Courses** — real list + create/edit dialog + delete; group counts derived from `/groups`;
+  course logo derived from the course name (no logo field exists).
+- ✅ **Course syllabus** — no such resource on the backend; page now shows the real course +
+  its real groups and states what endpoints are needed.
+- ✅ **Leads** — real list/filters, create/edit dialog, delete, convert-to-client, bulk transfer,
+  xlsx export via `GET /leads/export`.
+- ✅ **Coupons** — real list + create (`/leads/coupons`).
+- ✅ **Timetable** — real `GET /timetable` with working Day/Week/Month navigation, recurrence
+  handled server-side, mentor names joined from `/employees`, colours derived from course name.
+- ✅ **Profile / Performance** — `/auth/me` + `/students/me*`; change-password wired to
+  `POST /auth/change-password`; performance + roadmap computed from real journal rows.
+- ✅ **Deleted all mock infrastructure**: `src/pages/*/mock-data.ts`, the whole `src/mocks/`
+  folder, the `VITE_USE_MOCKS` branch in `src/lib/axios.ts` and the flag in `.env.development`.
+- ✅ `npx tsc -b` clean · `npm run build` OK · eslint clean apart from 4 pre-existing
+  `react-refresh` warnings in files not touched here.
+- ✅ Smoke-tested every request the pages make against the live API — all 200.
+
+**⚠️ Follow-up for the backend team:** see **`MISSING_ENDPOINTS.md`** (new, in the repo root) —
+23 numbered gaps, marked where they block a piece of the design.
+
 <!-- Claude: append new dated entries above this line as work progresses. -->
