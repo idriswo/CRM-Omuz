@@ -20,12 +20,13 @@ import {
   weekDays,
   type TimetableEvent,
 } from "./mock-data"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 
 type ViewMode = "Day" | "Week" | "Month"
 const ROW = 78
 
 export function TimetablePage() {
-  const [view, setView] = useState<ViewMode>("Day")
+  const [view, setView] = usePersistedState<ViewMode>("timetable:view", "Day")
 
   return (
     <div className="flex flex-col gap-6">

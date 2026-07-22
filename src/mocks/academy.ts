@@ -269,6 +269,84 @@ function buildWeek(weekNumber: number, roster: { id: number; full_name: string }
   }
 }
 
+/** Journals are cached per group so week / date edits survive a refetch. */
+const journalCache = new Map<number, Journal>()
+
+export function getJournal(groupId: number): Journal {
+  const cached = journalCache.get(groupId)
+  if (cached) return cached
+  const journal = buildJournal(groupId)
+  journalCache.set(groupId, journal)
+  return journal
+}
+
+export function addJournalWeek(
+  groupId: number,
+  dates: string[],
+  weekNumber?: number
+): JournalWeek {
+  const journal = getJournal(groupId)
+  const roster = (journal.weeks[0]?.students ?? []).map((s) => ({
+    id: s.student_id,
+    full_name: s.full_name,
+  }))
+  const week: JournalWeek = {
+    week_number: weekNumber ?? Math.max(0, ...journal.weeks.map((w) => w.week_number)) + 1,
+    dates,
+    // A fresh week starts blank: no attendance, no scores, no comments.
+    students: roster.map((s) => ({
+      student_id: s.id,
+      full_name: s.full_name,
+      days: dates.map((date) => ({ date, attendance: false, score: null, comment: "", late: 0 })),
+      bonus: 0,
+      exam: 0,
+      sum: 0,
+    })),
+  }
+  journal.weeks = [week, ...journal.weeks]
+  return week
+}
+
+export function addJournalDate(groupId: number, weekNumber: number, date: string) {
+  const week = getJournal(groupId).weeks.find((w) => w.week_number === weekNumber)
+  if (!week) return
+  week.dates = [...week.dates, date]
+  week.students = week.students.map((student) => ({
+    ...student,
+    days: [...student.days, { date, attendance: false, score: null, comment: "", late: 0 }],
+  }))
+}
+
+export function updateJournalDate(
+  groupId: number,
+  weekNumber: number,
+  index: number,
+  date: string
+) {
+  const week = getJournal(groupId).weeks.find((w) => w.week_number === weekNumber)
+  if (!week || !week.dates[index]) return
+  week.dates = week.dates.map((d, i) => (i === index ? date : d))
+  week.students = week.students.map((student) => ({
+    ...student,
+    days: student.days.map((day, i) => (i === index ? { ...day, date } : day)),
+  }))
+}
+
+export function deleteJournalDate(groupId: number, weekNumber: number, index: number) {
+  const week = getJournal(groupId).weeks.find((w) => w.week_number === weekNumber)
+  if (!week || !week.dates[index]) return
+  week.dates = week.dates.filter((_, i) => i !== index)
+  week.students = week.students.map((student) => ({
+    ...student,
+    days: student.days.filter((_, i) => i !== index),
+  }))
+}
+
+export function deleteJournalWeek(groupId: number, weekNumber: number) {
+  const journal = getJournal(groupId)
+  journal.weeks = journal.weeks.filter((w) => w.week_number !== weekNumber)
+}
+
 // --- Grouped views (the "Groups" tab on Graduates / Left courses) ---
 
 const graduateGroupNames = ["C# 2 August", "React June #1", "C++ Online January", "JavaScript May"]

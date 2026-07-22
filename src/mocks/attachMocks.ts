@@ -54,7 +54,12 @@ import {
   monthlyChart,
   groups,
   groupStats,
-  buildJournal,
+  getJournal,
+  addJournalWeek,
+  addJournalDate,
+  updateJournalDate,
+  deleteJournalDate,
+  deleteJournalWeek,
   graduateGroups,
   leftCourseGroups,
   leaders,
@@ -364,9 +369,35 @@ export function attachMocks(axiosInstance: AxiosInstance) {
   })
   mock.onGet(/\/groups\/\d+\/journal$/).reply((config) => {
     const id = Number(config.url?.split("/")[2])
-    return [200, buildJournal(id)]
+    return [200, getJournal(id)]
   })
-  mock.onPost(/\/groups\/\d+\/journal\/week$/).reply(201, { success: true })
+  mock.onPost(/\/groups\/\d+\/journal\/week$/).reply((config) => {
+    const id = Number(config.url?.split("/")[2])
+    const { dates, week_number } = JSON.parse(config.data ?? "{}")
+    return [201, addJournalWeek(id, dates ?? [], week_number)]
+  })
+  mock.onPost(/\/groups\/\d+\/journal\/\d+\/date$/).reply((config) => {
+    const parts = config.url?.split("/") ?? []
+    const { date } = JSON.parse(config.data ?? "{}")
+    addJournalDate(Number(parts[2]), Number(parts[4]), date)
+    return [201, { success: true }]
+  })
+  mock.onDelete(/\/groups\/\d+\/journal\/\d+\/date\/\d+$/).reply((config) => {
+    const parts = config.url?.split("/") ?? []
+    deleteJournalDate(Number(parts[2]), Number(parts[4]), Number(parts[6]))
+    return [200, { success: true }]
+  })
+  mock.onDelete(/\/groups\/\d+\/journal\/\d+$/).reply((config) => {
+    const parts = config.url?.split("/") ?? []
+    deleteJournalWeek(Number(parts[2]), Number(parts[4]))
+    return [200, { success: true }]
+  })
+  mock.onPut(/\/groups\/\d+\/journal\/\d+\/date\/\d+$/).reply((config) => {
+    const parts = config.url?.split("/") ?? []
+    const { date } = JSON.parse(config.data ?? "{}")
+    updateJournalDate(Number(parts[2]), Number(parts[4]), Number(parts[6]), date)
+    return [200, { success: true }]
+  })
   mock.onPut(/\/groups\/\d+\/journal\/\d+\/students\/\d+$/).reply(200, { success: true })
   mock.onGet(/\/groups\/\d+$/).reply((config) => {
     const id = Number(config.url?.split("/").pop())

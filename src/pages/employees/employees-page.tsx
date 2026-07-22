@@ -22,13 +22,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { employees, positions, statuses, type Employee } from "./mock-data"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import { RoleBadge } from "./badges"
 
 type View = "grid" | "list"
 
 export function EmployeesPage() {
   const navigate = useNavigate()
-  const [view, setView] = useState<View>("grid")
+  const [view, setView] = usePersistedState<View>("employees:view", "grid")
   const [search, setSearch] = useState("")
 
   const filtered = employees.filter((e) =>

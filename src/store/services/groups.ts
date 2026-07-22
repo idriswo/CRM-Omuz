@@ -75,6 +75,11 @@ export interface GroupBody {
   duration: string
   required_students: number
   branch_id: number | null
+  description?: string
+  duration_type?: string
+  status?: GroupStatus | ""
+  format?: string
+  telegram_link?: string
 }
 
 export interface GroupsParams extends ListParams {

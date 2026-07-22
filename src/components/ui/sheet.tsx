@@ -12,15 +12,23 @@ function SheetContent({
   className,
   children,
   title,
+  side = "right",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { title: string }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  title: string
+  /** Screen edge the panel slides in from. */
+  side?: "left" | "right"
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
       <DialogPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col gap-6 overflow-y-auto border-l border-border bg-card p-6 shadow-lg duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
+          "fixed inset-y-0 z-50 flex w-full max-w-xl flex-col gap-6 overflow-y-auto border-border bg-card p-6 shadow-lg duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out",
+          side === "right"
+            ? "right-0 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right"
+            : "left-0 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left",
           className
         )}
         {...props}
