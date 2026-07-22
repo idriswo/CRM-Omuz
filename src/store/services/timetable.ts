@@ -1,21 +1,26 @@
 import { api } from "@/store/api"
 
+/** Exactly what `GET /timetable` returns (backend prisma model `TimetableEntry`).
+ * Recurring entries are expanded server-side: one object per occurrence inside
+ * the requested range, each carrying its own `date`. */
 export interface TimetableEntry {
   id: number
   course_name: string
-  group_id: number
+  group_id: number | null
   type: string
+  /** ISO datetime — only the clock part is meaningful. */
   start_time: string
   end_time: string
   class_room: string
   mentor_id: number
+  /** ISO datetime of this occurrence. */
   date: string
   repeat_days: number[]
 }
 
 export interface TimetableBody {
   course_name: string
-  group_id: number
+  group_id?: number | null
   type: string
   start_time: string
   end_time: string
@@ -27,26 +32,26 @@ export interface TimetableBody {
 
 export interface TimetableParams {
   view?: "day" | "week" | "month"
+  /** ISO date; the backend derives the range from it. */
   date?: string
+  group_id?: number
+  mentor_id?: number
 }
 
-/** NOTE: not wired into the Timetable calendar page yet — that page's day/week/
- * month grid rendering was built against static mock data with a much richer
- * shape (positioned events, colors) than these raw backend rows provide. */
 export const timetableApi = api.injectEndpoints({
   endpoints: (build) => ({
-    getTimetable: build.query<{ data: TimetableEntry[] }, TimetableParams | void>({
+    getTimetable: build.query<TimetableEntry[], TimetableParams | void>({
       query: (params) => ({ url: "/timetable", params: params ?? {} }),
-      transformResponse: (response: TimetableEntry[] | { data: TimetableEntry[] }) => ({
-        data: Array.isArray(response) ? response : response.data,
-      }),
       providesTags: ["Timetable"],
     }),
     createTimetableEntry: build.mutation<TimetableEntry, TimetableBody>({
       query: (data) => ({ url: "/timetable", method: "post", data }),
       invalidatesTags: ["Timetable"],
     }),
-    updateTimetableEntry: build.mutation<TimetableEntry, { id: number; data: Partial<TimetableBody> }>({
+    updateTimetableEntry: build.mutation<
+      TimetableEntry,
+      { id: number; data: Partial<TimetableBody> }
+    >({
       query: ({ id, data }) => ({ url: `/timetable/${id}`, method: "put", data }),
       invalidatesTags: ["Timetable"],
     }),

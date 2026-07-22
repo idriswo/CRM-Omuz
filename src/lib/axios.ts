@@ -40,11 +40,6 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
   return api(config)
 })
 
-if (import.meta.env.VITE_USE_MOCKS === "true") {
-  const { attachMocks } = await import("@/mocks/attachMocks")
-  attachMocks(api)
-} else {
-  // Fire-and-forget warm-up ping so the backend is (hopefully) already awake
-  // by the time the user submits the login form.
-  api.get("/branches").catch(() => {})
-}
+// Fire-and-forget warm-up ping so the backend is (hopefully) already awake
+// by the time the user submits the login form.
+api.get("/branches").catch(() => {})
