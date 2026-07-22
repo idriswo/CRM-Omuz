@@ -24,7 +24,7 @@ export function PermissionsPage() {
   })
   const [updatePermission] = useUpdatePermissionMutation()
 
-  const groups = Array.from(new Set(data?.data.map((p) => p.group) ?? []))
+  const groups = Array.from(new Set(data?.data?.map((p) => p.group) ?? []))
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,7 +67,7 @@ export function PermissionsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data?.data.map((permission) => (
+            {data?.data?.map((permission) => (
               <TableRow key={permission.id}>
                 <TableCell className="font-medium">{permission.name}</TableCell>
                 <TableCell className="text-right">

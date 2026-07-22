@@ -155,7 +155,7 @@ export function AccountantPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((a) => (
+            {data?.data?.map((a) => (
               <TableRow key={a.id}>
                 <TableCell>{a.started_at}</TableCell>
                 <TableCell>{a.finished_at}</TableCell>

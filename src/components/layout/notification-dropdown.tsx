@@ -15,7 +15,7 @@ export function NotificationDropdown() {
       <DropdownMenuTrigger asChild>
         <button className="relative rounded-md p-2 hover:bg-accent" aria-label="Notifications">
           <Bell className="size-5 text-primary" />
-          {data?.data.some((n) => !n.read) && (
+          {data?.data?.some((n) => !n.read) && (
             <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-destructive" />
           )}
         </button>
@@ -26,7 +26,7 @@ export function NotificationDropdown() {
           <Mail className="size-4" />
         </div>
         <div className="flex max-h-96 flex-col divide-y divide-border overflow-y-auto">
-          {data?.data.map((n) => (
+          {data?.data?.map((n) => (
             <div key={n.id} className="flex flex-col gap-1 px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">{n.from}</span>

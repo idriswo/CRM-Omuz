@@ -68,7 +68,7 @@ export function AvansPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((a) => (
+            {data?.data?.map((a) => (
               <TableRow key={a.id}>
                 <TableCell className="font-medium">{a.full_name}</TableCell>
                 <TableCell>{a.month}</TableCell>

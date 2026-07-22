@@ -80,4 +80,70 @@ npm run build    # type-check + build (use to verify no TS errors)
 
 - ⏳ POSSIBLE NEXT: pixel review vs mockups (spacing/colors), "Add new course/lead/coupon" dialogs, wire filters, dark-theme pass on timetable, connect backend (endpoints.md) — backend later.
 
+### 2026-07-22 — Session 2 (de-mock: wire Employees / Courses / Timetable / Profile to the real API)
+
+**Context found:** the real backend source lives at `C:\Users\acer\Desktop\CRM-Omuz-Bekend`
+(Express + Prisma + Postgres, deployed on Render). Swagger UI is at **`/api-docs`** — *not*
+`/api/docs` (that path is behind the auth middleware and answers `401 No token`). The whole
+`/api/*` surface requires a Bearer token; the seeded bootstrap login is the `director` from
+`prisma/seed.ts`.
+
+**Audit result:** the pages listed above were built on colocated `mock-*.ts` files. Only the
+Employees and Courses *lists* were talking to the API; everything else (mentor levels, syllabus,
+leads, coupons, the entire timetable, and three profile endpoints) was static or pointed at routes
+that return 404.
+
+**Done — every page now reads/writes the real API:**
+
+- ✅ **Services rewritten to the true payload shapes** (`employees`, `courses`, `timetable`,
+  `profile`) — dropped the invented `status`/`age`/`roles[]`/`fee`/`groups` normalisers that
+  fabricated data the backend never sent.
+- ✅ **Employees** — list with real `search` / `position` / `branch_id` filters, real delete,
+  new `/employees/:id/edit` route; Add/Edit form posts the fields the API actually persists.
+- ✅ **Mentor levels** — real `GET /employees/mentor-levels` + inline `PUT` (the 12-month matrix
+  is impossible: the model stores one current level per mentor).
+- ✅ **Courses** — real list + create/edit dialog + delete; group counts derived from `/groups`;
+  course logo derived from the course name (no logo field exists).
+- ✅ **Course syllabus** — no such resource on the backend; page now shows the real course +
+  its real groups and states what endpoints are needed.
+- ✅ **Leads** — real list/filters, create/edit dialog, delete, convert-to-client, bulk transfer,
+  xlsx export via `GET /leads/export`.
+- ✅ **Coupons** — real list + create (`/leads/coupons`).
+- ✅ **Timetable** — real `GET /timetable` with working Day/Week/Month navigation, recurrence
+  handled server-side, mentor names joined from `/employees`, colours derived from course name.
+- ✅ **Profile / Performance** — `/auth/me` + `/students/me*`; change-password wired to
+  `POST /auth/change-password`; performance + roadmap computed from real journal rows.
+- ✅ **Deleted all mock infrastructure**: `src/pages/*/mock-data.ts`, the whole `src/mocks/`
+  folder, the `VITE_USE_MOCKS` branch in `src/lib/axios.ts` and the flag in `.env.development`.
+- ✅ `npx tsc -b` clean · `npm run build` OK · eslint clean apart from 4 pre-existing
+  `react-refresh` warnings in files not touched here.
+- ✅ Smoke-tested every request the pages make against the live API — all 200.
+
+**⚠️ Follow-up for the backend team:** see **`MISSING_ENDPOINTS.md`** (new, in the repo root) —
+23 numbered gaps, marked where they block a piece of the design.
+
+### 2026-07-22 — Session 3 (Profile-link fix, error handling, pagination, debounce)
+
+- ✅ **Profile-меню в топбаре вело на дашборд** — пункт звал `homeRouteForRole()` вместо профиля.
+  Добавлен `profileRouteForRole()` в `src/lib/auth.ts`, топбар использует его.
+- ⚠️ **Дизайн Profile был по ошибке переписан в Session 2 — восстановлен из git** (`profile-page.tsx`,
+  `performance-page.tsx`, `roadmap-card.tsx`, `services/profile.ts` идентичны HEAD). Он снова
+  ходит в `/me/birthdays`, `/me/groups`, `/me/performance`, которых на бэкенде нет (404) —
+  ждём эндпоинты, см. `MISSING_ENDPOINTS.md`. **Дизайн Profile не трогать.**
+- ✅ **Ошибка 409 при удалении больше не проглатывается.** Бэкенд корректно отдаёт 409
+  (проверено вживую на `DELETE /courses/1` — курс с группой; данные не пострадали).
+  Новый `src/lib/api-error.ts` мапит статус → текст, `Toast` получил `variant="error"`.
+  Подключено в Employees / Courses / Leads (удаление, convert-to-client, transfer, export)
+  и в Mentor levels (сохранение уровня).
+- ✅ **`ConfirmDialog`** (`components/shared/confirm-dialog.tsx`) вместо нативного `window.confirm()`.
+- ✅ **Пагинация** — `components/shared/pagination.tsx` на бэкендовом `meta {total,page,limit}`;
+  Employees и Courses по 12, Leads по 20. Смена фильтра/поиска сбрасывает на 1-ю страницу,
+  удаление последней строки — шаг назад.
+- ✅ **Debounce 400 мс** на поиске (`hooks/use-debounced-value.ts`) в Employees / Courses / Leads.
+- ✅ Прочие баги: выделение лидов больше не «залипает» при смене фильтра/страницы/удалении
+  (Transfer теперь работает только по видимым строкам и показывает счётчик); модалки Transfer и
+  Create coupon сбрасываются при переоткрытии; сетка расписания растягивается под уроки
+  раньше 08:00 / позже 20:00 (раньше они не отображались).
+- ✅ `tsc -b` clean · `npm run build` OK · eslint — только 4 старых `react-refresh` предупреждения.
+
 <!-- Claude: append new dated entries above this line as work progresses. -->

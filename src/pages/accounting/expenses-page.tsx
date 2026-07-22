@@ -80,7 +80,7 @@ export function ExpensesPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((row) => {
+            {data?.data?.map((row) => {
               const open = openRows.includes(row.id)
               return (
                 <Fragment key={row.id}>

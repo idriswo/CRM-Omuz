@@ -67,7 +67,7 @@ export function TemplatesDialog({ open, onOpenChange }: { open: boolean; onOpenC
         </div>
 
         <div className="flex flex-col gap-3">
-          {data?.data.map((t) => (
+          {data?.data?.map((t) => (
             <div key={t.id} className="rounded-xl border border-border p-4">
               <div className="mb-1 flex items-center justify-between">
                 <span className="font-semibold">{t.title}</span>

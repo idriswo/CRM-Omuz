@@ -3,7 +3,7 @@ import { api } from "@/store/api"
 export interface Profile {
   id: number
   full_name: string
-  role: "Admin" | "Mentor" | "Student"
+  role: "Admin" | "Mentor" | "Student" | "Superadmin" | "Director"
   status?: string
   registered_at: string
   branch: string
@@ -72,7 +72,18 @@ export interface Performance {
 export const profileApi = api.injectEndpoints({
   endpoints: (build) => ({
     getProfile: build.query<Profile, void>({
-      query: () => ({ url: "/me" }),
+      query: () => ({ url: "/auth/me" }),
+      transformResponse: (response: Profile & { role: unknown; full_name?: string; first_name?: string; last_name?: string }) => {
+        const rawRole = (response.role as { name?: string } | string | undefined)
+        const roleName = typeof rawRole === "object" ? rawRole?.name : rawRole
+        const role = roleName ? ((roleName.charAt(0).toUpperCase() + roleName.slice(1)) as Profile["role"]) : "Admin"
+        return {
+          ...response,
+          role,
+          full_name:
+            response.full_name || [response.first_name, response.last_name].filter(Boolean).join(" "),
+        }
+      },
       providesTags: ["Profile"],
     }),
     getUpcomingBirthdays: build.query<{ data: Birthday[] }, void>({

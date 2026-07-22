@@ -20,7 +20,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Toast } from "@/components/shared/toast"
-import { employees } from "@/pages/employees/mock-data"
+import { useGetEmployeesQuery } from "@/store/services"
 
 type MentorStatus = "Teaching" | "Support"
 
@@ -30,8 +30,6 @@ interface GroupMentor {
   status: MentorStatus
   date: string
 }
-
-const mentorOptions = employees.map((e) => e.fullName)
 
 function today() {
   return new Date().toLocaleDateString("ru-RU").replace(/\//g, ".")
@@ -73,6 +71,9 @@ export function MentorsSheet({
   mentors: string[]
   children: ReactNode
 }) {
+  const { data: employees } = useGetEmployeesQuery({ limit: 200 })
+  const mentorOptions = (employees?.data ?? []).map((e) => e.fullName)
+
   const [open, setOpen] = useState(false)
   const [mentors, setMentors] = useState<GroupMentor[]>(() =>
     initial.map((name, i) => ({ id: i + 1, name, status: "Teaching", date: "23.08.2022" }))

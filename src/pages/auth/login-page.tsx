@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { useLoginMutation, useRegisterMutation } from "@/store/services"
+import { homeRouteForRole, persistSession } from "@/lib/auth"
 import { ForgotPasswordDialog } from "./forgot-password-dialog"
 
 export function LoginPage() {
@@ -28,8 +29,8 @@ export function LoginPage() {
       phone: String(form.get("phone")),
       password: String(form.get("password")),
     }).unwrap()
-    localStorage.setItem("access_token", res.access_token)
-    navigate("/dashboard")
+    const role = persistSession(res)
+    navigate(homeRouteForRole(role))
   }
 
   const handleRegister = async (e: FormEvent<HTMLFormElement>) => {

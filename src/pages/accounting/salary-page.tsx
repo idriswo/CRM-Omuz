@@ -71,7 +71,7 @@ export function SalaryPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((s) => (
+            {data?.data?.map((s) => (
               <TableRow key={s.id}>
                 <TableCell className="font-medium">{s.full_name}</TableCell>
                 <TableCell>{s.total}</TableCell>

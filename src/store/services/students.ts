@@ -45,6 +45,17 @@ export interface Student {
   photo: string | null
 }
 
+/**
+ * The live backend only sends first_name/last_name, not a precomputed
+ * full_name — derive it so every page that reads student.full_name keeps working.
+ */
+function fillFullName<T extends { full_name?: string; first_name?: string; last_name?: string }>(
+  record: T
+): T {
+  if (record.full_name) return record
+  return { ...record, full_name: [record.first_name, record.last_name].filter(Boolean).join(" ") }
+}
+
 export interface StudentBody {
   first_name: string
   last_name: string
@@ -148,10 +159,15 @@ export const studentsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getStudents: build.query<Envelope<Student>, StudentsParams | void>({
       query: (params) => ({ url: "/students", params: params ?? {} }),
+      transformResponse: (response: Envelope<Student>) => ({
+        ...response,
+        data: response.data.map(fillFullName),
+      }),
       providesTags: ["Students"],
     }),
     getStudent: build.query<Student, number>({
       query: (id) => ({ url: `/students/${id}` }),
+      transformResponse: (response: Student) => fillFullName(response),
       providesTags: ["Students"],
     }),
     createStudent: build.mutation<Student, StudentBody>({

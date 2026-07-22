@@ -16,10 +16,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { courses } from "@/pages/courses/mock-data"
 import {
   useCreateGroupMutation,
   useGetBranchesQuery,
+  useGetCoursesQuery,
   useUpdateGroupMutation,
   type Group,
   type GroupBody,
@@ -113,6 +113,7 @@ export function GroupFormDialog({
 }) {
   const isEdit = Boolean(group)
   const { data: branches } = useGetBranchesQuery()
+  const { data: courses } = useGetCoursesQuery({ limit: 200 })
   const [createGroup, { isLoading: isCreating }] = useCreateGroupMutation()
   const [updateGroup, { isLoading: isUpdating }] = useUpdateGroupMutation()
 
@@ -134,7 +135,7 @@ export function GroupFormDialog({
             start_date: group.start_date,
             end_date: group.end_date,
             status: group.status,
-            course_id: courses.find((c) => c.title === group.course)?.id ?? null,
+            course_id: courses?.data.find((c) => c.name === group.course)?.id ?? null,
             branch_id: branches?.data.find((b) => b.title === group.branch)?.id ?? null,
           }
         : emptyForm
@@ -235,7 +236,7 @@ export function GroupFormDialog({
               label="Course"
               value={form.course_id ? String(form.course_id) : ""}
               onChange={(v) => set("course_id", Number(v))}
-              options={courses.map((c) => ({ value: String(c.id), label: c.title }))}
+              options={(courses?.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
             />
           </div>
 

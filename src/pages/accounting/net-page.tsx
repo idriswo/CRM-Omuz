@@ -64,7 +64,7 @@ export function NetPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((n) => (
+            {data?.data?.map((n) => (
               <TableRow key={n.id}>
                 <TableCell className="font-medium">{n.full_name}</TableCell>
                 <TableCell>{n.category}</TableCell>

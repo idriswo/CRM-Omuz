@@ -34,7 +34,7 @@ function GroupList({ selected, onToggle }: { selected: Set<string>; onToggle: (k
 
   return (
     <div className="flex flex-col divide-y divide-border">
-      {data?.data.map((group) => {
+      {data?.data?.map((group) => {
         const open = openGroups.includes(group.id)
         const danger = group.present / group.studentsTotal < 0.6
         return (
@@ -105,7 +105,7 @@ function PersonList({
 
   return (
     <div className="flex flex-col divide-y divide-border">
-      {data?.data.map((p) => (
+      {data?.data?.map((p) => (
         <label
           key={p.id}
           className={cn(
@@ -186,7 +186,7 @@ export function SmsMailingsPage() {
 
   const handleSelectTemplate = (id: number) => {
     setTemplateId(id)
-    const t = templates?.data.find((tpl) => tpl.id === id)
+    const t = templates?.data?.find((tpl) => tpl.id === id)
     if (t) {
       setTitle(t.title)
       setDescription(t.description)
@@ -291,7 +291,7 @@ export function SmsMailingsPage() {
               </button>
               {templatesOpen && (
                 <div className="flex flex-col gap-1 border-t border-input p-2">
-                  {templates?.data.map((t) => (
+                  {templates?.data?.map((t) => (
                     <label key={t.id} className="cursor-pointer rounded-md">
                       <div
                         className={cn(
@@ -324,7 +324,7 @@ export function SmsMailingsPage() {
           <Card>
             <h2 className="text-lg font-semibold">History</h2>
             <div className="flex flex-col divide-y divide-border">
-              {history?.data.map((h) => {
+              {history?.data?.map((h) => {
                 const open = expandedHistory.includes(h.id)
                 return (
                   <div key={h.id} className="py-3">

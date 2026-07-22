@@ -7,6 +7,7 @@ export interface Group {
   id: number
   name: string
   course: string
+  course_id?: number
   start_date: string
   end_date: string
   duration: string
@@ -88,14 +89,55 @@ export interface GroupsParams extends ListParams {
   course_id?: number
 }
 
+const STATUS_MAP: Record<string, GroupStatus> = {
+  active: "Started",
+  started: "Started",
+  pending: "Pending",
+  finished: "Finished",
+  completed: "Finished",
+}
+
+/** Backend sends lowercase status + `_count.students`, not the capacity/passing fields we render. */
+function normalizeGroup(raw: Group & { _count?: { students?: number } }): Group {
+  return {
+    ...raw,
+    status: STATUS_MAP[String(raw.status).toLowerCase()] ?? raw.status,
+    passing_students: raw.passing_students ?? raw._count?.students ?? 0,
+    capacity: raw.capacity ?? raw.required_students,
+  }
+}
+
 export const groupsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getGroups: build.query<Envelope<Group>, GroupsParams | void>({
       query: (params) => ({ url: "/groups", params: params ?? {} }),
+      transformResponse: (response: Envelope<Group>) => ({
+        ...response,
+        data: response.data.map(normalizeGroup),
+      }),
       providesTags: ["Groups"],
     }),
     getGroup: build.query<GroupDetail, number>({
       query: (id) => ({ url: `/groups/${id}` }),
+      transformResponse: (response: GroupDetail) => {
+        const normalized = normalizeGroup(response) as GroupDetail
+        return {
+          ...normalized,
+          mentors: normalized.mentors ?? [],
+          left_course: normalized.left_course ?? [],
+          students: (normalized.students ?? []).map((s) => ({
+            ...s,
+            full_name:
+              s.full_name ||
+              [
+                (s as unknown as { first_name?: string }).first_name,
+                (s as unknown as { last_name?: string }).last_name,
+              ]
+                .filter(Boolean)
+                .join(" "),
+          })),
+        }
+      },
       providesTags: ["Groups"],
     }),
     getGroupStats: build.query<{ data: GroupTagStat[] }, void>({

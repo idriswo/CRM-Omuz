@@ -24,10 +24,11 @@ import {
 } from "@/components/ui/table"
 import { useGetBranchChartQuery, useGetBranchesQuery } from "@/store/services"
 
-const seriesColors: Record<string, string> = {
-  Sadbarg: "#22b8cf",
-  Profsous: "#f5a623",
-}
+const CHART_PALETTE = ["#22b8cf", "#f5a623", "#8b5cf6", "#22c55e", "#ef4444"]
+const MONTH_LABELS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
 
 function ChartTooltip({
   active,
@@ -61,6 +62,17 @@ export function BranchesPage() {
   const { data: chart } = useGetBranchChartQuery({ year })
   const { data: branches } = useGetBranchesQuery({ search, year })
 
+  const seriesColors: Record<string, string> = Object.fromEntries(
+    (branches?.data ?? []).map((b, i) => [b.title, CHART_PALETTE[i % CHART_PALETTE.length]])
+  )
+  const chartRows = MONTH_LABELS.map((month, i) => {
+    const row: Record<string, string | number> = { month }
+    for (const branch of branches?.data ?? []) {
+      row[branch.title] = chart?.[String(branch.id)]?.[String(i + 1)] ?? 0
+    }
+    return row
+  })
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -92,7 +104,7 @@ export function BranchesPage() {
         </div>
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chart?.data ?? []}>
+            <LineChart data={chartRows}>
               <CartesianGrid vertical={false} stroke="var(--color-border)" />
               <XAxis
                 dataKey="month"
@@ -102,8 +114,16 @@ export function BranchesPage() {
               />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }} />
               <Tooltip content={<ChartTooltip />} />
-              <Line type="monotone" dataKey="Sadbarg" stroke={seriesColors.Sadbarg} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Profsous" stroke={seriesColors.Profsous} strokeWidth={2} dot={false} />
+              {(branches?.data ?? []).map((branch) => (
+                <Line
+                  key={branch.id}
+                  type="monotone"
+                  dataKey={branch.title}
+                  stroke={seriesColors[branch.title]}
+                  strokeWidth={2}
+                  dot={false}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -136,7 +156,7 @@ export function BranchesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {branches?.data.map((branch) => (
+            {branches?.data?.map((branch) => (
               <TableRow key={branch.id}>
                 <TableCell className="font-medium">{branch.title}</TableCell>
                 <TableCell>{branch.city}</TableCell>

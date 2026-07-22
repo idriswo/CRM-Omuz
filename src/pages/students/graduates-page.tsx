@@ -191,7 +191,7 @@ export function GraduatesPage() {
                   </TableCell>
                 </TableRow>
               )}
-              {data?.data.map((graduate) => (
+              {data?.data?.map((graduate) => (
                 <TableRow key={graduate.id}>
                   <TableCell>
                     <GraduateName graduate={graduate} />

@@ -49,10 +49,90 @@ export interface JournalCellBody {
   exam?: number
 }
 
+interface RawJournalEntry {
+  id: number
+  day_date: string
+  attendance: boolean
+  score: number | null
+  bonus: number | null
+  exam: number | null
+}
+
+interface RawJournalStudent {
+  student_id: number
+  first_name?: string
+  last_name?: string
+  full_name?: string
+  entries: RawJournalEntry[]
+}
+
+interface RawJournalWeek {
+  week_id: number
+  week_number: number
+  dates: string[]
+  students: RawJournalStudent[]
+}
+
+interface RawJournal {
+  group_id: number
+  group_name: string
+  weeks: RawJournalWeek[]
+}
+
+/** Real backend nests raw attendance/score `entries` per student per week and has
+ * no chart/top-level student list or weekly sum/bonus/exam totals — this reshapes
+ * it into what the (richer, mock-built) journal grid + chart expect. */
+function normalizeJournal(raw: RawJournal): Journal {
+  const studentNames = new Map<number, string>()
+
+  const weeks: JournalWeek[] = raw.weeks.map((week) => ({
+    week_number: week.week_number,
+    dates: week.dates,
+    students: week.students.map((student) => {
+      const full_name = student.full_name || [student.first_name, student.last_name].filter(Boolean).join(" ")
+      studentNames.set(student.student_id, full_name)
+      const days: JournalDay[] = student.entries.map((entry) => ({
+        date: entry.day_date,
+        attendance: entry.attendance,
+        score: entry.score,
+        comment: "",
+      }))
+      return {
+        student_id: student.student_id,
+        full_name,
+        days,
+        bonus: student.entries.reduce((sum, e) => sum + (e.bonus ?? 0), 0),
+        exam: student.entries.reduce((sum, e) => sum + (e.exam ?? 0), 0),
+        sum: days.reduce((sum, d) => sum + (d.score ?? 0), 0),
+      }
+    }),
+  }))
+
+  const chart: JournalChartPoint[] = weeks.map((week) => {
+    const point: JournalChartPoint = { week: `Week ${week.week_number}` }
+    for (const student of week.students) {
+      const scored = student.days.filter((d) => d.score !== null)
+      point[student.full_name] = scored.length
+        ? Math.round(scored.reduce((s, d) => s + (d.score ?? 0), 0) / scored.length)
+        : 0
+    }
+    return point
+  })
+
+  return {
+    group_id: raw.group_id,
+    group_name: raw.group_name,
+    weeks,
+    chart,
+    students: Array.from(studentNames, ([id, name]) => ({ id, name })),
+  }
+}
+
 export const journalApi = api.injectEndpoints({
   endpoints: (build) => ({
     getJournal: build.query<Journal, number>({
       query: (groupId) => ({ url: `/groups/${groupId}/journal` }),
+      transformResponse: (response: RawJournal) => normalizeJournal(response),
       providesTags: ["Journal"],
     }),
     addJournalWeek: build.mutation<

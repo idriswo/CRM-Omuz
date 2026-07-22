@@ -161,7 +161,7 @@ export function LeadersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {winners?.data.map((winner) => (
+              {winners?.data?.map((winner) => (
                 <TableRow key={winner.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
