@@ -180,6 +180,10 @@ export const studentsApi = api.injectEndpoints({
     }),
     deleteStudent: build.mutation<{ success: boolean }, number>({
       query: (id) => ({ url: `/students/${id}`, method: "delete" }),
+      invalidatesTags: ["Students", "Groups"],
+    }),
+    inviteStudentAccount: build.mutation<{ success: boolean }, { id: number; email: string }>({
+      query: ({ id, email }) => ({ url: `/students/${id}/invite`, method: "post", data: { email } }),
       invalidatesTags: ["Students"],
     }),
 
@@ -271,6 +275,7 @@ export const {
   useCreateStudentMutation,
   useUpdateStudentMutation,
   useDeleteStudentMutation,
+  useInviteStudentAccountMutation,
   useGetGraduatesQuery,
   useGetGraduatesStatsQuery,
   useGetGraduateGroupsQuery,

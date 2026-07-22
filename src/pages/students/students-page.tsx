@@ -19,6 +19,8 @@ import { ALL, FilterSelect } from "@/components/shared/filter-select"
 import { PhoneCell } from "@/components/shared/phone-cell"
 import { SearchInput } from "@/components/shared/search-input"
 import { ViewToggle, type ViewMode } from "@/components/shared/view-toggle"
+import { StudentInfoSheet } from "@/components/shared/student-info-sheet"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import {
   useGetGroupsQuery,
   useGetStudentsQuery,
@@ -42,11 +44,13 @@ function ContractBadge({ status }: { status: ContractStatus }) {
 
 function StudentName({ student, index }: { student: Student; index?: number }) {
   return (
-    <span className="flex items-center gap-2 font-medium">
-      {index !== undefined && <span>{index}.</span>}
-      {student.full_name}
-      {student.is_top && <Crown className="size-4 fill-amber-400 text-amber-500" />}
-    </span>
+    <StudentInfoSheet studentId={student.id} fullName={student.full_name}>
+      <button type="button" className="flex items-center gap-2 font-medium hover:text-primary">
+        {index !== undefined && <span>{index}.</span>}
+        {student.full_name}
+        {student.is_top && <Crown className="size-4 fill-amber-400 text-amber-500" />}
+      </button>
+    </StudentInfoSheet>
   )
 }
 
@@ -121,7 +125,7 @@ function StudentCard({ student }: { student: Student }) {
 }
 
 export function StudentsPage() {
-  const [view, setView] = useState<ViewMode>("list")
+  const [view, setView] = usePersistedState<ViewMode>("students:view", "list")
   const [search, setSearch] = useState("")
   const [contract, setContract] = useState(ALL)
   const [status, setStatus] = useState(ALL)

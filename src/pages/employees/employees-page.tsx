@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { positions, statuses } from "./mock-data"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import { RoleBadge } from "./badges"
 import { useGetEmployeesQuery, type Employee } from "@/store/services"
 
@@ -29,7 +30,7 @@ type View = "grid" | "list"
 
 export function EmployeesPage() {
   const navigate = useNavigate()
-  const [view, setView] = useState<View>("grid")
+  const [view, setView] = usePersistedState<View>("employees:view", "grid")
   const [search, setSearch] = useState("")
 
   const { data } = useGetEmployeesQuery({ search })

@@ -40,9 +40,9 @@ function PodiumCard({
   return (
     <Card
       className={cn(
-        "items-center gap-2 border-0 py-6 text-center",
+        "items-center justify-center gap-2 border-0 py-6 text-center",
         tint,
-        raised && "-mt-8 pb-10"
+        raised && "-mt-8"
       )}
     >
       <span className="relative">
@@ -84,7 +84,7 @@ export function LeadersPage() {
       <div className="grid gap-6 xl:grid-cols-[1.1fr_1fr]">
         <div className="flex min-w-0 flex-col gap-6">
           {top3.length === 3 && (
-            <div className="grid grid-cols-3 items-end gap-4 pt-8">
+            <div className="grid grid-cols-3 items-stretch gap-4 pt-8">
               {podium.map((slot) => (
                 <PodiumCard
                   key={slot.index}

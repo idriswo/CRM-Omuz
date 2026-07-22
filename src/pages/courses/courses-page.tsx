@@ -16,12 +16,13 @@ import {
 } from "@/components/ui/table"
 import { JsLogo } from "./course-logo"
 import { useGetCoursesQuery, type Course } from "@/store/services"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 
 type View = "grid" | "list"
 
 export function CoursesPage() {
   const navigate = useNavigate()
-  const [view, setView] = useState<View>("grid")
+  const [view, setView] = usePersistedState<View>("courses:view", "grid")
   const [search, setSearch] = useState("")
 
   const { data } = useGetCoursesQuery({ search })

@@ -27,10 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { GroupFormDialog } from "./group-form-dialog"
 import { ALL, FilterSelect } from "@/components/shared/filter-select"
 import { SearchInput } from "@/components/shared/search-input"
 import { ViewToggle, type ViewMode } from "@/components/shared/view-toggle"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 import {
+  useDeleteGroupMutation,
   useGetBranchesQuery,
   useGetGroupStatsQuery,
   useGetGroupsQuery,
@@ -51,7 +55,7 @@ function seatsVariant(group: Group) {
   return group.required_students >= group.capacity ? "success" : "destructive"
 }
 
-function GroupCard({ group }: { group: Group }) {
+function GroupCard({ group, onEdit }: { group: Group; onEdit: () => void }) {
   return (
     <Card className="gap-4">
       <div className="flex items-start justify-between gap-3">
@@ -94,10 +98,8 @@ function GroupCard({ group }: { group: Group }) {
           <Button variant="ghost" size="icon" aria-label="Send message">
             <Send className="size-4 text-sky-500" />
           </Button>
-          <Button variant="ghost" size="icon" asChild>
-            <Link to={`/groups/${group.id}`} aria-label="Open group">
-              <Pencil className="size-4 text-primary" />
-            </Link>
+          <Button variant="ghost" size="icon" aria-label="Edit group" onClick={onEdit}>
+            <Pencil className="size-4 text-primary" />
           </Button>
         </div>
       </div>
@@ -106,11 +108,15 @@ function GroupCard({ group }: { group: Group }) {
 }
 
 export function GroupsPage() {
-  const [view, setView] = useState<ViewMode>("list")
+  const [view, setView] = usePersistedState<ViewMode>("groups:view", "list")
   const [search, setSearch] = useState("")
   const [branch, setBranch] = useState(ALL)
   const [status, setStatus] = useState(ALL)
+  const [pendingDelete, setPendingDelete] = useState<Group | null>(null)
+  const [editing, setEditing] = useState<Group | null>(null)
+  const [creating, setCreating] = useState(false)
 
+  const [deleteGroup] = useDeleteGroupMutation()
   const { data: stats } = useGetGroupStatsQuery()
   const { data: branches } = useGetBranchesQuery()
   const { data, isLoading } = useGetGroupsQuery({
@@ -126,7 +132,7 @@ export function GroupsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Groups</h1>
-        <Button size="lg">
+        <Button size="lg" onClick={() => setCreating(true)}>
           <Plus /> Add new
         </Button>
       </div>
@@ -149,9 +155,14 @@ export function GroupsPage() {
             </Card>
           )
         })}
-        <Card className="flex flex-col items-center justify-center gap-1 py-5">
-          <ArrowRight className="size-6 text-primary" />
-          <span className="text-sm font-semibold text-primary">See more</span>
+        <Card className="p-0">
+          <Link
+            to="/students/activity"
+            className="flex h-full flex-col items-center justify-center gap-1 py-5"
+          >
+            <ArrowRight className="size-6 text-primary" />
+            <span className="text-sm font-semibold text-primary">See more</span>
+          </Link>
         </Card>
       </div>
 
@@ -181,7 +192,7 @@ export function GroupsPage() {
       {view === "grid" ? (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {groups.map((group) => (
-            <GroupCard key={group.id} group={group} />
+            <GroupCard key={group.id} group={group} onEdit={() => setEditing(group)} />
           ))}
         </div>
       ) : (
@@ -251,12 +262,20 @@ export function GroupsPage() {
                   </TableCell>
                   <TableCell>
                     <div className={cn("flex items-center justify-end gap-1")}>
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link to={`/groups/${group.id}`} aria-label="Edit group">
-                          <Pencil className="size-4 text-primary" />
-                        </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Edit group"
+                        onClick={() => setEditing(group)}
+                      >
+                        <Pencil className="size-4 text-primary" />
                       </Button>
-                      <Button variant="ghost" size="icon" aria-label="Delete group">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Delete group"
+                        onClick={() => setPendingDelete(group)}
+                      >
                         <Trash2 className="size-4 text-destructive" />
                       </Button>
                     </div>
@@ -267,6 +286,22 @@ export function GroupsPage() {
           </Table>
         </Card>
       )}
+
+      <GroupFormDialog open={creating} onOpenChange={setCreating} />
+      <GroupFormDialog
+        group={editing}
+        open={editing !== null}
+        onOpenChange={(open) => !open && setEditing(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Do you really want to delete group?"
+        onConfirm={() => {
+          if (pendingDelete) deleteGroup(pendingDelete.id)
+        }}
+      />
     </div>
   )
 }

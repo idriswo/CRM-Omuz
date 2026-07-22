@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
-import { ArrowLeft, ChevronDown, Pencil, Plus } from "lucide-react"
+import { ArrowLeft, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react"
 import {
   CartesianGrid,
   Line,
@@ -24,14 +24,28 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CommentDialog } from "./comment-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { CommentDialog } from "./comment-dialog"
+import { NewWeekDialog } from "./new-week-dialog"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import {
+  useAddJournalDateMutation,
+  useUpdateJournalDateMutation,
+  useDeleteJournalDateMutation,
+  useDeleteJournalWeekMutation,
   useAddJournalWeekMutation,
   useGetJournalQuery,
   useUpdateJournalCellMutation,
   type Journal,
   type JournalWeek,
 } from "@/store/services"
+import { usePersistedState } from "@/hooks/use-persisted-state"
 
 const lineColors = [
   "#fa8c16",
@@ -90,7 +104,7 @@ function WeekTick({
 
 interface CellPatch {
   dayIndex?: number
-  day?: Partial<{ attendance: boolean; score: number; comment: string }>
+  day?: Partial<{ attendance: boolean; score: number; comment: string; late: number }>
   bonus?: number
   exam?: number
 }
@@ -98,9 +112,13 @@ interface CellPatch {
 function WeekTable({
   week,
   onCellChange,
+  onEditDate,
+  onDeleteDate,
 }: {
   week: JournalWeek
   onCellChange: (studentId: number, patch: CellPatch) => void
+  onEditDate: (index: number, date: string) => void
+  onDeleteDate: (index: number, date: string) => void
 }) {
   return (
     <div className="overflow-x-auto">
@@ -113,15 +131,28 @@ function WeekTable({
             >
               Students
             </th>
-            {week.dates.map((date) => (
+            {week.dates.map((date, dateIndex) => (
               <th
-                key={date}
+                key={`${date}-${dateIndex}`}
                 colSpan={2}
                 className="border-r border-border px-3 py-2 font-semibold"
               >
                 <span className="inline-flex items-center gap-2">
                   {date}
-                  <Pencil className="size-4 text-primary" />
+                  <button
+                    type="button"
+                    aria-label={`Edit date ${date}`}
+                    onClick={() => onEditDate(dateIndex, date)}
+                  >
+                    <Pencil className="size-4 text-primary" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete date ${date}`}
+                    onClick={() => onDeleteDate(dateIndex, date)}
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </button>
                 </span>
               </th>
             ))}
@@ -165,8 +196,9 @@ function WeekTable({
                       studentName={student.full_name}
                       date={day.date}
                       comment={day.comment}
-                      onSave={(comment) =>
-                        onCellChange(student.student_id, { dayIndex, day: { comment } })
+                      late={day.late ?? 0}
+                      onSave={(value) =>
+                        onCellChange(student.student_id, { dayIndex, day: value })
                       }
                     />
                     <Checkbox
@@ -243,17 +275,39 @@ export function JournalPage() {
   const groupId = Number(id)
   const { data, isLoading } = useGetJournalQuery(groupId)
   const [addWeek] = useAddJournalWeekMutation()
+  const [addDate] = useAddJournalDateMutation()
+  const [updateDate] = useUpdateJournalDateMutation()
+  /** Open date dialog: `index` is null when adding, set when editing. */
+  const [dateForm, setDateForm] = useState<{
+    week: number
+    index: number | null
+    current: string
+  } | null>(null)
+  const [newDate, setNewDate] = useState("")
+  const [newWeekOpen, setNewWeekOpen] = useState(false)
+  const [deleteDate] = useDeleteJournalDateMutation()
+  const [deleteWeek] = useDeleteJournalWeekMutation()
+  const [pendingDate, setPendingDate] = useState<{
+    week: number
+    index: number
+    date: string
+  } | null>(null)
+  const [pendingWeek, setPendingWeek] = useState<number | null>(null)
   const [updateCell] = useUpdateJournalCellMutation()
 
   const [weeks, setWeeks] = useState<JournalWeek[]>([])
   const [openWeeks, setOpenWeeks] = useState<number[]>([])
-  const [loadedGroupId, setLoadedGroupId] = useState<number | null>(null)
-  const [view, setView] = useState("chart")
+  const [loadedKey, setLoadedKey] = useState("")
+  const [view, setView] = usePersistedState("journal:view", "chart")
   const [sheetUrl, setSheetUrl] = useState("")
 
-  // Seed the editable grid once the journal arrives (adjusting state during render).
-  if (data && loadedGroupId !== data.group_id) {
-    setLoadedGroupId(data.group_id)
+  // Seed the editable grid when the journal arrives or gains a week / date
+  // (adjusting state during render).
+  const journalKey = data
+    ? `${data.group_id}:${data.weeks.length}:${data.weeks.map((w) => w.dates.length).join("-")}`
+    : ""
+  if (data && loadedKey !== journalKey) {
+    setLoadedKey(journalKey)
     setWeeks(data.weeks)
     setOpenWeeks(data.weeks.slice(0, 2).map((w) => w.week_number))
   }
@@ -320,7 +374,7 @@ export function JournalPage() {
             <TabsTrigger value="sheets">Google sheets</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button size="lg" onClick={() => addWeek({ groupId, dates: [] })}>
+        <Button size="lg" onClick={() => setNewWeekOpen(true)}>
           <Plus /> New week
         </Button>
       </div>
@@ -394,15 +448,37 @@ export function JournalPage() {
       {weeks.map((week) => {
         const open = openWeeks.includes(week.week_number)
         return (
-          <Card key={week.week_number} className="gap-4 p-0">
-            <button
-              type="button"
-              onClick={() => toggleWeek(week.week_number)}
-              className="flex items-center gap-2 px-6 pt-6 pb-0 text-left text-2xl font-bold"
-            >
-              Week {week.week_number}
-              <ChevronDown className={cn("size-5 transition-transform", open && "rotate-180")} />
-            </button>
+          <Card key={week.week_number} className="gap-0 p-0">
+            <div className="flex items-center justify-between gap-3 px-6 py-5">
+              <button
+                type="button"
+                onClick={() => toggleWeek(week.week_number)}
+                className="flex items-center gap-2 text-left text-2xl font-bold"
+              >
+                Week {week.week_number}
+                <ChevronDown className={cn("size-5 transition-transform", open && "rotate-180")} />
+              </button>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  className="text-primary"
+                  onClick={() => {
+                    setNewDate("")
+                    setDateForm({ week: week.week_number, index: null, current: "" })
+                  }}
+                >
+                  <Plus /> New date
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label={`Delete week ${week.week_number}`}
+                  onClick={() => setPendingWeek(week.week_number)}
+                >
+                  <Trash2 className="size-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
             {open && (
               <div className="px-6 pb-6">
                 <div className="rounded-xl border border-border">
@@ -411,6 +487,13 @@ export function JournalPage() {
                     onCellChange={(studentId, patch) =>
                       handleCellChange(week.week_number, studentId, patch)
                     }
+                    onEditDate={(index, date) => {
+                      setNewDate("")
+                      setDateForm({ week: week.week_number, index, current: date })
+                    }}
+                    onDeleteDate={(index, date) =>
+                      setPendingDate({ week: week.week_number, index, date })
+                    }
                   />
                 </div>
               </div>
@@ -418,6 +501,74 @@ export function JournalPage() {
           </Card>
         )
       })}
+
+      <ConfirmDialog
+        open={pendingDate !== null}
+        onOpenChange={(o) => !o && setPendingDate(null)}
+        title={`Do you really want to delete ${pendingDate?.date ?? ""}?`}
+        onConfirm={() => {
+          if (pendingDate) {
+            deleteDate({ groupId, weekId: pendingDate.week, index: pendingDate.index })
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={pendingWeek !== null}
+        onOpenChange={(o) => !o && setPendingWeek(null)}
+        title={`Do you really want to delete week ${pendingWeek ?? ""}?`}
+        onConfirm={() => {
+          if (pendingWeek !== null) deleteWeek({ groupId, weekId: pendingWeek })
+        }}
+      />
+
+      <NewWeekDialog
+        open={newWeekOpen}
+        onOpenChange={setNewWeekOpen}
+        suggestedNumber={Math.max(0, ...weeks.map((w) => w.week_number)) + 1}
+        onCreate={({ week_number, dates }) => addWeek({ groupId, dates, week_number })}
+      />
+
+      <Dialog open={dateForm !== null} onOpenChange={(o) => !o && setDateForm(null)}>
+        <DialogContent className="max-w-sm gap-5">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              {dateForm?.index === null ? "New date" : "Edit date"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <span className="absolute -top-2 left-3 z-10 bg-card px-1 text-xs text-muted-foreground">
+              Date
+            </span>
+            <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!newDate}
+              onClick={async () => {
+                if (dateForm) {
+                  if (dateForm.index === null) {
+                    await addDate({ groupId, weekId: dateForm.week, date: newDate })
+                  } else {
+                    await updateDate({
+                      groupId,
+                      weekId: dateForm.week,
+                      index: dateForm.index,
+                      date: newDate,
+                    })
+                  }
+                }
+                setDateForm(null)
+              }}
+            >
+              {dateForm?.index === null ? "ADD" : "SAVE"}
+            </Button>
+            <Button variant="outline" className="text-primary" onClick={() => setDateForm(null)}>
+              CANCEL
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

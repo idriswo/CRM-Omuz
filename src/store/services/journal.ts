@@ -5,6 +5,8 @@ export interface JournalDay {
   attendance: boolean
   score: number | null
   comment: string
+  /** Minutes the student was late. */
+  late?: number
 }
 
 export interface JournalStudentRow {
@@ -42,6 +44,7 @@ export interface JournalCellBody {
   attendance?: boolean
   score?: number | null
   comment?: string
+  late?: number
   bonus?: number
   exam?: number
 }
@@ -132,11 +135,53 @@ export const journalApi = api.injectEndpoints({
       transformResponse: (response: RawJournal) => normalizeJournal(response),
       providesTags: ["Journal"],
     }),
-    addJournalWeek: build.mutation<JournalWeek, { groupId: number; dates: string[] }>({
-      query: ({ groupId, dates }) => ({
+    addJournalWeek: build.mutation<
+      JournalWeek,
+      { groupId: number; dates: string[]; week_number?: number }
+    >({
+      query: ({ groupId, dates, week_number }) => ({
         url: `/groups/${groupId}/journal/week`,
         method: "post",
-        data: { dates },
+        data: { dates, week_number },
+      }),
+      invalidatesTags: ["Journal"],
+    }),
+    addJournalDate: build.mutation<
+      { success: boolean },
+      { groupId: number; weekId: number; date: string }
+    >({
+      query: ({ groupId, weekId, date }) => ({
+        url: `/groups/${groupId}/journal/${weekId}/date`,
+        method: "post",
+        data: { date },
+      }),
+      invalidatesTags: ["Journal"],
+    }),
+    updateJournalDate: build.mutation<
+      { success: boolean },
+      { groupId: number; weekId: number; index: number; date: string }
+    >({
+      query: ({ groupId, weekId, index, date }) => ({
+        url: `/groups/${groupId}/journal/${weekId}/date/${index}`,
+        method: "put",
+        data: { date },
+      }),
+      invalidatesTags: ["Journal"],
+    }),
+    deleteJournalDate: build.mutation<
+      { success: boolean },
+      { groupId: number; weekId: number; index: number }
+    >({
+      query: ({ groupId, weekId, index }) => ({
+        url: `/groups/${groupId}/journal/${weekId}/date/${index}`,
+        method: "delete",
+      }),
+      invalidatesTags: ["Journal"],
+    }),
+    deleteJournalWeek: build.mutation<{ success: boolean }, { groupId: number; weekId: number }>({
+      query: ({ groupId, weekId }) => ({
+        url: `/groups/${groupId}/journal/${weekId}`,
+        method: "delete",
       }),
       invalidatesTags: ["Journal"],
     }),
@@ -157,5 +202,9 @@ export const journalApi = api.injectEndpoints({
 export const {
   useGetJournalQuery,
   useAddJournalWeekMutation,
+  useAddJournalDateMutation,
+  useUpdateJournalDateMutation,
+  useDeleteJournalDateMutation,
+  useDeleteJournalWeekMutation,
   useUpdateJournalCellMutation,
 } = journalApi
