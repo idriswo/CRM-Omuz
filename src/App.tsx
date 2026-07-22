@@ -31,7 +31,6 @@ import { EnrollStudentsPage } from "@/pages/students/enroll-students-page"
 import { GroupsPage } from "@/pages/groups/groups-page"
 import { GroupDetailPage } from "@/pages/groups/group-detail-page"
 import { JournalPage } from "@/pages/journal/journal-page"
-import { PlaceholderPage } from "@/pages/placeholder-page"
 import { AccountingOverviewPage } from "@/pages/accounting/accounting-overview-page"
 import { PaymentsPage } from "@/pages/accounting/payments-page"
 import { BudgetPage } from "@/pages/accounting/budget-page"
@@ -47,11 +46,8 @@ import { StudentProfilePage } from "@/pages/student/profile-page"
 import { StudentGroupmatesPage } from "@/pages/student/groupmates-page"
 import { StudentScoresPage } from "@/pages/student/scores-page"
 import { StudentCoinsPage } from "@/pages/student/coins-page"
-
-const placeholders: [string, string][] = [
-  ["/progressbook", "Progressbook"],
-  ["/jobs", "Jobs"],
-]
+import { ProgressbookPage } from "@/pages/progressbook/progressbook-page"
+import { JobsPage } from "@/pages/jobs/jobs-page"
 
 function RoleHome() {
   if (!isAuthenticated()) return <Navigate to="/login" replace />
@@ -98,10 +94,8 @@ const App = () => {
 
             <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/sms-mailings" element={<SmsMailingsPage />} />
-
-            {placeholders.map(([path, title]) => (
-              <Route key={path} path={path} element={<PlaceholderPage title={title} />} />
-            ))}
+            <Route path="/progressbook" element={<ProgressbookPage />} />
+            <Route path="/jobs" element={<JobsPage />} />
 
             {/* Superadmin + director only */}
             <Route element={<RequireRole roles={["superadmin", "director"]} />}>

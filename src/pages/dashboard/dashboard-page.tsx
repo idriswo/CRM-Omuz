@@ -2,15 +2,15 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import {
   Calendar,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
+  CaretLeft,
+  CaretRight,
+  ClipboardText,
   GraduationCap,
   Play,
   Users,
-  UserSquare2,
-  List,
-} from "lucide-react"
+  UserSquare,
+  ListBullets,
+} from "@phosphor-icons/react"
 import {
   Area,
   AreaChart,
@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ReasonDialog } from "./reason-dialog"
 import {
   useGetAttendanceChartQuery,
   useGetAttendanceLogQuery,
@@ -73,11 +74,17 @@ function SimpleTooltip({
   )
 }
 
+function formatDate(iso: string) {
+  const [y, m, d] = iso.split("-")
+  return `${d}.${m}.${y}`
+}
+
 export function DashboardPage() {
-  const [date] = useState("28.08.2024")
+  const [date, setDate] = useState("2024-08-28")
   const [leadsYear, setLeadsYear] = useState(2024)
   const [incomeMonth, setIncomeMonth] = useState("December")
   const [attendanceMonth, setAttendanceMonth] = useState("February 2024")
+  const [reasonOverrides, setReasonOverrides] = useState<Record<number, string>>({})
 
   const { data: stats } = useGetDashboardStatsQuery()
   const { data: attendanceLog } = useGetAttendanceLogQuery()
@@ -101,9 +108,16 @@ export function DashboardPage() {
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="relative">
           <span className="absolute -top-2.5 left-3 z-10 bg-background px-1 text-xs text-muted-foreground">Date</span>
-          <div className="flex h-11 items-center gap-2 rounded-lg border border-input bg-card px-3.5 text-sm">
-            {date}
-            <Calendar className="size-4 text-muted-foreground" />
+          <div className="relative flex h-11 items-center gap-2 rounded-lg border border-input bg-card px-3.5 text-sm">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              aria-label="Dashboard date"
+              className="absolute inset-0 cursor-pointer opacity-0"
+            />
+            <span className="pointer-events-none">{formatDate(date)}</span>
+            <Calendar weight="duotone" className="pointer-events-none size-4 text-muted-foreground" />
           </div>
         </div>
       </div>
@@ -114,19 +128,19 @@ export function DashboardPage() {
             <Card className="items-center gap-1 p-4">
               <span className="text-2xl font-bold text-primary">{stats?.students_count ?? 0}</span>
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <GraduationCap className="size-4" /> Students
+                <GraduationCap weight="duotone" className="size-4" /> Students
               </span>
             </Card>
             <Card className="items-center gap-1 p-4">
               <span className="text-2xl font-bold text-primary">{stats?.users_count ?? 0}</span>
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Users className="size-4" /> Users
+                <Users weight="duotone" className="size-4" /> Users
               </span>
             </Card>
             <Card className="items-center gap-1 p-4">
               <span className="text-2xl font-bold text-primary">{stats?.employees_count ?? 0}</span>
               <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <UserSquare2 className="size-4" /> Employees
+                <UserSquare weight="duotone" className="size-4" /> Employees
               </span>
             </Card>
           </div>
@@ -134,7 +148,7 @@ export function DashboardPage() {
           <Card className="p-0">
             <div className="flex items-center justify-between p-6 pb-0">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
-                <List className="size-5" /> Groups
+                <ListBullets weight="duotone" className="size-5" /> Groups
               </h2>
               <span className="text-xl font-bold text-primary">{groups?.data?.length ?? 0}</span>
             </div>
@@ -143,7 +157,7 @@ export function DashboardPage() {
                 <div key={g.id} className="flex items-center justify-between gap-3 py-2.5">
                   <span className="flex items-center gap-3">
                     <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Play className="size-3.5 fill-current" />
+                      <Play weight="fill" className="size-3.5" />
                     </span>
                     <span>
                       <div className="font-semibold">{g.name}</div>
@@ -157,8 +171,8 @@ export function DashboardPage() {
                       <div className="font-semibold text-success">{g.income.toLocaleString()} c</div>
                       <div className="text-xs text-muted-foreground">Income</div>
                     </span>
-                    <ClipboardList className="size-4 text-primary" />
-                    <ChevronRight className="size-4 text-muted-foreground" />
+                    <ClipboardText weight="duotone" className="size-4 text-primary" />
+                    <CaretRight className="size-4 text-muted-foreground" />
                   </span>
                 </div>
               ))}
@@ -170,11 +184,11 @@ export function DashboardPage() {
               <h2 className="text-lg font-semibold">Leads</h2>
               <div className="flex items-center gap-1 rounded-lg border border-input px-2 py-1">
                 <button onClick={() => setLeadsYear((y) => y - 1)} className="rounded p-1 hover:bg-accent" aria-label="Previous year">
-                  <ChevronLeft className="size-4" />
+                  <CaretLeft className="size-4" />
                 </button>
                 <span className="text-sm font-medium">{leadsYear} y</span>
                 <button onClick={() => setLeadsYear((y) => y + 1)} className="rounded p-1 hover:bg-accent" aria-label="Next year">
-                  <ChevronRight className="size-4" />
+                  <CaretRight className="size-4" />
                 </button>
               </div>
             </div>
@@ -232,7 +246,18 @@ export function DashboardPage() {
                       </Link>
                     </TableCell>
                     <TableCell>{a.phone}</TableCell>
-                    <TableCell className="max-w-[220px] truncate text-muted-foreground">{a.reason}</TableCell>
+                    <TableCell className="max-w-[220px] text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <ReasonDialog
+                          studentName={a.full_name}
+                          reason={reasonOverrides[a.id] ?? a.reason}
+                          onSave={(reason) =>
+                            setReasonOverrides((prev) => ({ ...prev, [a.id]: reason }))
+                          }
+                        />
+                        <span className="truncate">{reasonOverrides[a.id] ?? a.reason}</span>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -243,17 +268,17 @@ export function DashboardPage() {
             <h2 className="text-lg font-semibold">Income In this month</h2>
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-3">
-                <span className="text-3xl font-bold">{income?.amount.toLocaleString() ?? 0} c</span>
+                <span className="text-3xl font-bold">{income?.amount?.toLocaleString() ?? 0} c</span>
                 <span className="text-sm text-muted-foreground">
                   {income?.diff_from_last_month ?? 0}% less than last month
                 </span>
                 <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-medium w-fit">
                   <button onClick={() => setIncomeMonth("November")} className="hover:text-primary" aria-label="Previous month">
-                    <ChevronLeft className="size-4" />
+                    <CaretLeft className="size-4" />
                   </button>
                   {incomeMonth}
                   <button onClick={() => setIncomeMonth("January")} className="hover:text-primary" aria-label="Next month">
-                    <ChevronRight className="size-4" />
+                    <CaretRight className="size-4" />
                   </button>
                 </div>
               </div>
@@ -291,7 +316,7 @@ export function DashboardPage() {
               className="rounded p-1 hover:bg-accent"
               aria-label="Previous month"
             >
-              <ChevronLeft className="size-4" />
+              <CaretLeft className="size-4" />
             </button>
             <span className="text-sm font-medium">{attendanceMonth}</span>
             <button
@@ -299,7 +324,7 @@ export function DashboardPage() {
               className="rounded p-1 hover:bg-accent"
               aria-label="Next month"
             >
-              <ChevronRight className="size-4" />
+              <CaretRight className="size-4" />
             </button>
           </div>
         </div>
@@ -331,8 +356,8 @@ export function DashboardPage() {
         <Card>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Enroll</h2>
-            <Link to="#" className="flex items-center gap-1 text-sm font-medium text-primary">
-              See more <ChevronRight className="size-4" />
+            <Link to="/students/enroll" className="flex items-center gap-1 text-sm font-medium text-primary">
+              See more <CaretRight className="size-4" />
             </Link>
           </div>
           <div className="h-[220px] w-full">
@@ -376,8 +401,8 @@ export function DashboardPage() {
           <Card className="p-0">
             <div className="flex items-center justify-between p-6 pb-0">
               <h2 className="text-lg font-semibold">Employed graduates ({graduates?.meta?.total ?? 0})</h2>
-              <Link to="#" className="flex items-center gap-1 text-sm font-medium text-primary">
-                See more <ChevronRight className="size-4" />
+              <Link to="/students/graduates" className="flex items-center gap-1 text-sm font-medium text-primary">
+                See more <CaretRight className="size-4" />
               </Link>
             </div>
             <Table>
@@ -415,8 +440,10 @@ export function DashboardPage() {
           <Card>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Left courses</h2>
-              <Button variant="outline" size="sm">
-                <List className="size-4" /> Show list
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/students/left-courses">
+                  <ListBullets weight="duotone" className="size-4" /> Show list
+                </Link>
               </Button>
             </div>
             <div className="h-[220px] w-full">
