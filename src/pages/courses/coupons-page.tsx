@@ -81,7 +81,12 @@ export function CouponsPage() {
         columns.
       </p>
 
-      <CreateCouponDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      {/* Keyed so a half-filled, abandoned form is not still there next time. */}
+      <CreateCouponDialog
+        key={dialogOpen ? "open" : "closed"}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </div>
   )
 }

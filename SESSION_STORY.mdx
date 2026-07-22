@@ -122,4 +122,28 @@ that return 404.
 **⚠️ Follow-up for the backend team:** see **`MISSING_ENDPOINTS.md`** (new, in the repo root) —
 23 numbered gaps, marked where they block a piece of the design.
 
+### 2026-07-22 — Session 3 (Profile-link fix, error handling, pagination, debounce)
+
+- ✅ **Profile-меню в топбаре вело на дашборд** — пункт звал `homeRouteForRole()` вместо профиля.
+  Добавлен `profileRouteForRole()` в `src/lib/auth.ts`, топбар использует его.
+- ⚠️ **Дизайн Profile был по ошибке переписан в Session 2 — восстановлен из git** (`profile-page.tsx`,
+  `performance-page.tsx`, `roadmap-card.tsx`, `services/profile.ts` идентичны HEAD). Он снова
+  ходит в `/me/birthdays`, `/me/groups`, `/me/performance`, которых на бэкенде нет (404) —
+  ждём эндпоинты, см. `MISSING_ENDPOINTS.md`. **Дизайн Profile не трогать.**
+- ✅ **Ошибка 409 при удалении больше не проглатывается.** Бэкенд корректно отдаёт 409
+  (проверено вживую на `DELETE /courses/1` — курс с группой; данные не пострадали).
+  Новый `src/lib/api-error.ts` мапит статус → текст, `Toast` получил `variant="error"`.
+  Подключено в Employees / Courses / Leads (удаление, convert-to-client, transfer, export)
+  и в Mentor levels (сохранение уровня).
+- ✅ **`ConfirmDialog`** (`components/shared/confirm-dialog.tsx`) вместо нативного `window.confirm()`.
+- ✅ **Пагинация** — `components/shared/pagination.tsx` на бэкендовом `meta {total,page,limit}`;
+  Employees и Courses по 12, Leads по 20. Смена фильтра/поиска сбрасывает на 1-ю страницу,
+  удаление последней строки — шаг назад.
+- ✅ **Debounce 400 мс** на поиске (`hooks/use-debounced-value.ts`) в Employees / Courses / Leads.
+- ✅ Прочие баги: выделение лидов больше не «залипает» при смене фильтра/страницы/удалении
+  (Transfer теперь работает только по видимым строкам и показывает счётчик); модалки Transfer и
+  Create coupon сбрасываются при переоткрытии; сетка расписания растягивается под уроки
+  раньше 08:00 / позже 20:00 (раньше они не отображались).
+- ✅ `tsc -b` clean · `npm run build` OK · eslint — только 4 старых `react-refresh` предупреждения.
+
 <!-- Claude: append new dated entries above this line as work progresses. -->
