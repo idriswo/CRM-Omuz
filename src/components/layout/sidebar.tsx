@@ -4,7 +4,8 @@ import { ChevronDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/logo"
-import { navItems, type NavItem } from "./nav-config"
+import { getRole } from "@/lib/auth"
+import { navItems, studentNavItems, type NavItem } from "./nav-config"
 
 /** Longest matching child wins, so /students/graduates never lights up "All students". */
 function activeChildPath(item: NavItem, pathname: string) {
@@ -22,8 +23,11 @@ function isChildActive(item: NavItem, pathname: string) {
 
 export function Sidebar() {
   const { pathname } = useLocation()
+  const role = getRole()
+  const items =
+    role === "student" ? studentNavItems : navItems.filter((item) => !item.roles || item.roles.includes(role!))
   const [openGroups, setOpenGroups] = useState<string[]>(
-    navItems.filter((item) => isChildActive(item, pathname)).map((item) => item.label)
+    items.filter((item) => isChildActive(item, pathname)).map((item) => item.label)
   )
 
   const toggleGroup = (label: string) => {
@@ -39,7 +43,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-col gap-1">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon
           const open = openGroups.includes(item.label)
           const active = item.to

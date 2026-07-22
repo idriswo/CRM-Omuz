@@ -13,6 +13,7 @@ import { LanguageSwitcher } from "@/components/language-switcher"
 import { NotificationDropdown } from "@/components/layout/notification-dropdown"
 import { useLogoutMutation } from "@/store/services"
 import { useTheme } from "@/components/theme-provider"
+import { clearSession, getRole, homeRouteForRole } from "@/lib/auth"
 
 export function Topbar() {
   const { theme, toggleTheme } = useTheme()
@@ -21,7 +22,7 @@ export function Topbar() {
 
   const handleLogout = async () => {
     await logout()
-    localStorage.removeItem("access_token")
+    clearSession()
     navigate("/login")
   }
 
@@ -62,7 +63,7 @@ export function Topbar() {
             <UserCircle2 className="size-9 text-primary" strokeWidth={1.5} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => navigate("/profile")}>
+            <DropdownMenuItem onSelect={() => navigate(homeRouteForRole(getRole()))}>
               Profile
             </DropdownMenuItem>
             <DropdownMenuSeparator />

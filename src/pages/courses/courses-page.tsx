@@ -14,8 +14,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { courses, type Course } from "./mock-data"
 import { JsLogo } from "./course-logo"
+import { useGetCoursesQuery, type Course } from "@/store/services"
 
 type View = "grid" | "list"
 
@@ -24,9 +24,8 @@ export function CoursesPage() {
   const [view, setView] = useState<View>("grid")
   const [search, setSearch] = useState("")
 
-  const filtered = courses.filter((c) =>
-    c.title.toLowerCase().includes(search.toLowerCase())
-  )
+  const { data } = useGetCoursesQuery({ search })
+  const filtered = data?.data ?? []
 
   return (
     <div className="flex flex-col gap-6">

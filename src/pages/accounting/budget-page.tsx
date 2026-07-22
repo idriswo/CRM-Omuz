@@ -128,7 +128,7 @@ export function BudgetPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((b) => (
+            {data?.data?.map((b) => (
               <TableRow key={b.id}>
                 <TableCell className="font-medium">{b.category_name}</TableCell>
                 <TableCell>{b.from_date}</TableCell>

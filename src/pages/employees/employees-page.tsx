@@ -21,8 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { employees, positions, statuses, type Employee } from "./mock-data"
+import { positions, statuses } from "./mock-data"
 import { RoleBadge } from "./badges"
+import { useGetEmployeesQuery, type Employee } from "@/store/services"
 
 type View = "grid" | "list"
 
@@ -31,9 +32,8 @@ export function EmployeesPage() {
   const [view, setView] = useState<View>("grid")
   const [search, setSearch] = useState("")
 
-  const filtered = employees.filter((e) =>
-    e.fullName.toLowerCase().includes(search.toLowerCase())
-  )
+  const { data } = useGetEmployeesQuery({ search })
+  const filtered = data?.data ?? []
 
   return (
     <div className="flex flex-col gap-6">

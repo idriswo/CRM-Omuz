@@ -106,7 +106,7 @@ export function PaymentsPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((p) => (
+            {data?.data?.map((p) => (
               <TableRow key={p.id}>
                 <TableCell>
                   <div className="font-medium">{p.full_name}</div>

@@ -82,7 +82,7 @@ export function DebtorsPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((d, i) => (
+            {data?.data?.map((d, i) => (
               <TableRow key={d.id}>
                 <TableCell className="font-medium">
                   {i + 1}. {d.full_name}

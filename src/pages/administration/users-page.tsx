@@ -51,7 +51,7 @@ export function UsersPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((user) => (
+            {data?.data?.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.full_name}</TableCell>
                 <TableCell>{user.type}</TableCell>

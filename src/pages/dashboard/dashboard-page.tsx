@@ -136,10 +136,10 @@ export function DashboardPage() {
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <List className="size-5" /> Groups
               </h2>
-              <span className="text-xl font-bold text-primary">{groups?.data.length ?? 0}</span>
+              <span className="text-xl font-bold text-primary">{groups?.data?.length ?? 0}</span>
             </div>
             <div className="flex flex-col divide-y divide-border px-6 py-2">
-              {groups?.data.map((g) => (
+              {groups?.data?.map((g) => (
                 <div key={g.id} className="flex items-center justify-between gap-3 py-2.5">
                   <span className="flex items-center gap-3">
                     <span className="flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -223,7 +223,7 @@ export function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {attendanceLog?.data.map((a) => (
+                {attendanceLog?.data?.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell>
                       <div className="font-medium">{a.full_name}</div>
@@ -361,7 +361,7 @@ export function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {enroll?.data.map((e) => (
+              {enroll?.data?.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.full_name}</TableCell>
                   <TableCell>{e.course}</TableCell>
@@ -375,7 +375,7 @@ export function DashboardPage() {
         <div className="flex flex-col gap-6">
           <Card className="p-0">
             <div className="flex items-center justify-between p-6 pb-0">
-              <h2 className="text-lg font-semibold">Employed graduates ({graduates?.meta.total ?? 0})</h2>
+              <h2 className="text-lg font-semibold">Employed graduates ({graduates?.meta?.total ?? 0})</h2>
               <Link to="#" className="flex items-center gap-1 text-sm font-medium text-primary">
                 See more <ChevronRight className="size-4" />
               </Link>
@@ -390,7 +390,7 @@ export function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {graduates?.data.map((g) => (
+                {graduates?.data?.map((g) => (
                   <TableRow key={g.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">

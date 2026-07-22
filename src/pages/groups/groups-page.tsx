@@ -58,7 +58,7 @@ function GroupCard({ group }: { group: Group }) {
         <div className="min-w-0">
           <p className="truncate text-lg font-bold">{group.name}</p>
           <p className="text-sm text-muted-foreground">
-            {group.start_date} - {group.end_date}
+            {new Date(group.start_date).toLocaleDateString("en-GB")} - {new Date(group.end_date).toLocaleDateString("en-GB")}
           </p>
         </div>
         <div className="flex flex-col items-center">
@@ -214,7 +214,7 @@ export function GroupsPage() {
                       {group.name}
                     </Link>
                     <p className="text-sm text-muted-foreground">
-                      {group.start_date} - {group.end_date}
+                      {new Date(group.start_date).toLocaleDateString("en-GB")} - {new Date(group.end_date).toLocaleDateString("en-GB")}
                     </p>
                   </TableCell>
                   <TableCell>{group.duration}</TableCell>

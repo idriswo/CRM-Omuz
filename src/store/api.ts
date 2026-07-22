@@ -25,6 +25,11 @@ export const api = createApi({
     "Groups",
     "Journal",
     "Schedule",
+    "Employees",
+    "Courses",
+    "Leads",
+    "Coupons",
+    "Timetable",
   ],
   endpoints: () => ({}),
 })

@@ -129,7 +129,7 @@ export function LeftCoursesPage() {
                 </TableCell>
               </TableRow>
             )}
-            {data?.data.map((row) => (
+            {data?.data?.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="font-medium">{row.full_name}</TableCell>
                 <TableCell>{row.group}</TableCell>

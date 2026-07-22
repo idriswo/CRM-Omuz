@@ -234,7 +234,7 @@ export function StudentFormPage() {
               <SelectValue placeholder="Branch" />
             </SelectTrigger>
             <SelectContent>
-              {branches?.data.map((branch) => (
+              {branches?.data?.map((branch) => (
                 <SelectItem key={branch.id} value={String(branch.id)}>
                   {branch.title}
                 </SelectItem>

@@ -25,6 +25,7 @@ import {
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RoadmapCard } from "@/components/shared/roadmap-card"
+import { clearSession } from "@/lib/auth"
 import {
   useGetMyGroupsQuery,
   useGetPerformanceQuery,
@@ -44,7 +45,7 @@ function ProfileHeaderCard({ profile }: { profile: Profile }) {
 
   const handleLogout = async () => {
     await logout()
-    localStorage.removeItem("access_token")
+    clearSession()
     navigate("/login")
   }
 
@@ -84,9 +85,9 @@ function ProfileHeaderCard({ profile }: { profile: Profile }) {
 
       <div className="mt-2 flex flex-col divide-y divide-border border-t border-border">
         {[
-          ["Registrated:", new Date(profile.registered_at).toLocaleDateString("en-GB")],
-          ["Branch:", profile.branch],
-          ["Birth date:", new Date(profile.birth_date).toLocaleDateString("en-GB")],
+          ["Registrated:", profile.registered_at ? new Date(profile.registered_at).toLocaleDateString("en-GB") : "-"],
+          ["Branch:", profile.branch ?? "-"],
+          ["Birth date:", profile.birth_date ? new Date(profile.birth_date).toLocaleDateString("en-GB") : "-"],
           ["Address:", profile.address ?? "-"],
         ].map(([label, value]) => (
           <div key={label} className="flex items-center justify-between py-3 text-sm">
@@ -250,7 +251,7 @@ function BirthdaysCard() {
         <CardHeading>Upcoming birthdays</CardHeading>
       </div>
       <div className="flex flex-col divide-y divide-border border-t border-border">
-        {birthdays?.data.map((b) => (
+        {birthdays?.data?.map((b) => (
           <div key={b.id} className="flex items-center justify-between py-3">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-full bg-muted">
@@ -288,7 +289,7 @@ function GroupsCard() {
         <Button variant="link">See all →</Button>
       </div>
       <div className="flex flex-col gap-4">
-        {groups?.data.map((group) => (
+        {groups?.data?.map((group) => (
           <div key={group.id} className="rounded-xl border border-border">
             <div className="flex items-center justify-between p-4">
               <div>

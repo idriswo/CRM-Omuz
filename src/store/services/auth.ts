@@ -17,8 +17,13 @@ export interface RegisterBody {
 
 export interface AuthResponse {
   access_token: string
-  refresh_token: string
-  user: { id: number; full_name: string; role: string }
+  refresh_token?: string
+  user?: {
+    id?: number
+    full_name?: string
+    role?: string | { name?: string }
+    can_add_students?: boolean
+  } | null
 }
 
 export const authApi = api.injectEndpoints({

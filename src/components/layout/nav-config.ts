@@ -11,8 +11,13 @@ import {
   Building2,
   Briefcase,
   Mail,
+  Coins,
+  UsersRound,
+  LineChart,
   type LucideIcon,
 } from "lucide-react"
+
+import type { Role } from "@/lib/auth"
 
 export interface NavLeaf {
   label: string
@@ -24,6 +29,8 @@ export interface NavItem {
   icon: LucideIcon
   to?: string
   children?: NavLeaf[]
+  /** Omit to show to every staff role (admin/superadmin/director). */
+  roles?: Role[]
 }
 
 export const navItems: NavItem[] = [
@@ -55,6 +62,7 @@ export const navItems: NavItem[] = [
   {
     label: "Administration",
     icon: ShieldCheck,
+    roles: ["superadmin", "director"],
     children: [
       { label: "Users", to: "/administration/users" },
       { label: "Permission", to: "/administration/permissions" },
@@ -65,6 +73,7 @@ export const navItems: NavItem[] = [
     label: "Accounting",
     icon: Landmark,
     to: "/accounting",
+    roles: ["director"],
     children: [
       { label: "Payment's", to: "/accounting/payments" },
       { label: "Budget", to: "/accounting/budget" },
@@ -75,4 +84,12 @@ export const navItems: NavItem[] = [
   { label: "Branches", icon: Building2, to: "/branches" },
   { label: "Jobs", icon: Briefcase, to: "/jobs" },
   { label: "SMS mailings", icon: Mail, to: "/sms-mailings" },
+]
+
+/** Student role gets its own tiny, entirely read-only menu — see the RBAC doc. */
+export const studentNavItems: NavItem[] = [
+  { label: "My profile", icon: Home, to: "/student/profile" },
+  { label: "Classmates", icon: UsersRound, to: "/student/groupmates" },
+  { label: "Scores & attendance", icon: LineChart, to: "/student/scores" },
+  { label: "My coins", icon: Coins, to: "/student/coins" },
 ]
