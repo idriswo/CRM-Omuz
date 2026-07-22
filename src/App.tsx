@@ -29,7 +29,6 @@ import { EnrollStudentsPage } from "@/pages/students/enroll-students-page"
 import { GroupsPage } from "@/pages/groups/groups-page"
 import { GroupDetailPage } from "@/pages/groups/group-detail-page"
 import { JournalPage } from "@/pages/journal/journal-page"
-import { PlaceholderPage } from "@/pages/placeholder-page"
 import { AccountingOverviewPage } from "@/pages/accounting/accounting-overview-page"
 import { PaymentsPage } from "@/pages/accounting/payments-page"
 import { BudgetPage } from "@/pages/accounting/budget-page"
@@ -41,11 +40,8 @@ import { AccountantPage } from "@/pages/accounting/accountant-page"
 import { NetPage } from "@/pages/accounting/net-page"
 import { SmsMailingsPage } from "@/pages/sms/sms-mailings-page"
 import { DashboardPage } from "@/pages/dashboard/dashboard-page"
-
-const placeholders: [string, string][] = [
-  ["/progressbook", "Progressbook"],
-  ["/jobs", "Jobs"],
-]
+import { ProgressbookPage } from "@/pages/progressbook/progressbook-page"
+import { JobsPage } from "@/pages/jobs/jobs-page"
 
 const App = () => {
   return (
@@ -97,13 +93,12 @@ const App = () => {
           <Route path="/accounting/net" element={<NetPage />} />
           <Route path="/sms-mailings" element={<SmsMailingsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          {placeholders.map(([path, title]) => (
-            <Route key={path} path={path} element={<PlaceholderPage title={title} />} />
-          ))}
+          <Route path="/progressbook" element={<ProgressbookPage />} />
+          <Route path="/jobs" element={<JobsPage />} />
         </Route>
 
-        <Route path="/" element={<Navigate to="/branches" replace />} />
-        <Route path="*" element={<Navigate to="/branches" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </ThemeProvider>
   )
