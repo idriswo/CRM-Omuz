@@ -12,7 +12,7 @@ import {
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { NotificationDropdown } from "@/components/layout/notification-dropdown"
 import { useLogoutMutation } from "@/store/services"
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "@/components/use-theme"
 import { clearSession, getRole, profileRouteForRole } from "@/lib/auth"
 
 export function Topbar() {
