@@ -196,6 +196,22 @@ export const journalApi = api.injectEndpoints({
       }),
       // No invalidation: the grid keeps its own edited state, a refetch would discard it.
     }),
+
+    /** The link is stored per group; the backend mirrors the journal into that sheet. */
+    setJournalSheet: build.mutation<
+      { success: boolean; sheet_url: string | null },
+      { groupId: number; sheet_url: string }
+    >({
+      query: ({ groupId, sheet_url }) => ({
+        url: `/groups/${groupId}/journal/sheet`,
+        method: "put",
+        data: { sheet_url },
+      }),
+      invalidatesTags: ["Journal"],
+    }),
+    syncJournalSheet: build.mutation<{ success: boolean }, number>({
+      query: (groupId) => ({ url: `/groups/${groupId}/journal/sync`, method: "post" }),
+    }),
   }),
 })
 
@@ -207,4 +223,6 @@ export const {
   useDeleteJournalDateMutation,
   useDeleteJournalWeekMutation,
   useUpdateJournalCellMutation,
+  useSetJournalSheetMutation,
+  useSyncJournalSheetMutation,
 } = journalApi

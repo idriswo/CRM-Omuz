@@ -42,6 +42,7 @@ import {
   useAddJournalWeekMutation,
   useGetJournalQuery,
   useUpdateJournalCellMutation,
+  useSetJournalSheetMutation,
   type Journal,
   type JournalWeek,
 } from "@/store/services"
@@ -270,6 +271,14 @@ function WeekTable({
   )
 }
 
+/** Google refuses to render an /edit link inside an iframe; /preview embeds fine. */
+function toEmbedUrl(url: string) {
+  const id = url.match(/\/spreadsheets\/d\/([\w-]+)/)?.[1]
+  if (!id) return url
+  const gid = url.match(/[#&?]gid=(\d+)/)?.[1]
+  return `https://docs.google.com/spreadsheets/d/${id}/preview${gid ? `?gid=${gid}` : ""}`
+}
+
 export function JournalPage() {
   const { id } = useParams()
   const groupId = Number(id)
@@ -299,7 +308,20 @@ export function JournalPage() {
   const [openWeeks, setOpenWeeks] = useState<number[]>([])
   const [loadedKey, setLoadedKey] = useState("")
   const [view, setView] = usePersistedState("journal:view", "chart")
+  const [setSheet] = useSetJournalSheetMutation()
   const [sheetUrl, setSheetUrl] = useState("")
+  const [loadedSheetFor, setLoadedSheetFor] = useState<number | null>(null)
+
+  // The link lives on the group, so it survives a reload and other staff see it too.
+  if (data && loadedSheetFor !== data.group_id) {
+    setLoadedSheetFor(data.group_id)
+    setSheetUrl(data.sheet_url ?? "")
+  }
+
+  const saveSheetUrl = (url: string) => {
+    setSheetUrl(url)
+    if (!url || /\/spreadsheets\/d\/[\w-]+/.test(url)) setSheet({ groupId, sheet_url: url })
+  }
 
   // Seed the editable grid when the journal arrives or gains a week / date
   // (adjusting state during render).
@@ -387,13 +409,13 @@ export function JournalPage() {
               className="w-full max-w-md"
               placeholder="Paste a Google Sheets share link"
               value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
+              onChange={(e) => saveSheetUrl(e.target.value)}
             />
           </div>
           {sheetUrl ? (
             <iframe
               title="Google sheet"
-              src={sheetUrl}
+              src={toEmbedUrl(sheetUrl)}
               className="h-[520px] w-full rounded-xl border border-border"
             />
           ) : (
