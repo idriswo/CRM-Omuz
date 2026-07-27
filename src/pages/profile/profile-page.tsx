@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react"
 import { useNavigate } from "react-router-dom"
+import { useDispatch } from "react-redux"
 import {
   Area,
   AreaChart,
@@ -26,6 +27,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RoadmapCard } from "@/components/shared/roadmap-card"
 import { clearSession } from "@/lib/auth"
+import { api } from "@/store/api"
 import {
   useGetMyGroupsQuery,
   useGetPerformanceQuery,
@@ -42,10 +44,13 @@ function CardHeading({ children }: { children: ReactNode }) {
 function ProfileHeaderCard({ profile }: { profile: Profile }) {
   const [logout] = useLogoutMutation()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const handleLogout = async () => {
     await logout()
     clearSession()
+    // Otherwise the next account to log in (same tab, no reload) sees this one's cached data.
+    dispatch(api.util.resetApiState())
     navigate("/login")
   }
 

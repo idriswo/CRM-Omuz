@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom"
+import { useDispatch } from "react-redux"
 import { Moon, Search, Sun, UserCircle2 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { NotificationDropdown } from "@/components/layout/notification-dropdown"
+import { api } from "@/store/api"
 import { useLogoutMutation } from "@/store/services"
 import { useTheme } from "@/components/use-theme"
 import { clearSession, getRole, profileRouteForRole } from "@/lib/auth"
@@ -19,10 +21,13 @@ export function Topbar() {
   const { theme, toggleTheme } = useTheme()
   const [logout] = useLogoutMutation()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const handleLogout = async () => {
     await logout()
     clearSession()
+    // Otherwise the next account to log in (same tab, no reload) sees this one's cached data.
+    dispatch(api.util.resetApiState())
     navigate("/login")
   }
 
