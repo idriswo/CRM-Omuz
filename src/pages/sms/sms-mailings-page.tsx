@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Toast } from "@/components/shared/toast"
 import { cn } from "@/lib/utils"
 import {
   useGetSmsGroupsQuery,
@@ -21,9 +22,16 @@ const tabs: { key: SmsRecipientType; label: string }[] = [
   { key: "group", label: "Group" },
   { key: "students", label: "Students" },
   { key: "mentors", label: "Mentors" },
-  { key: "leads", label: "Leads" },
   { key: "graduates", label: "Graduates" },
 ]
+
+/** The send endpoint groups mentors under "Employee" — everyone else keeps their own name. */
+const RECIPIENT_TYPE_FOR_TAB: Record<SmsRecipientType, "Student" | "Employee" | "Graduate"> = {
+  group: "Student",
+  students: "Student",
+  mentors: "Employee",
+  graduates: "Graduate",
+}
 
 function GroupList({ selected, onToggle }: { selected: Set<string>; onToggle: (key: string) => void }) {
   const [openGroups, setOpenGroups] = useState<number[]>([1])
@@ -61,7 +69,7 @@ function GroupList({ selected, onToggle }: { selected: Set<string>; onToggle: (k
               <div className="mt-2 flex flex-col gap-1">
                 <div className="flex items-center justify-between px-1 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
                   <span>Full name</span>
-                  <span>Phone</span>
+                  <span>Email</span>
                 </div>
                 {group.students.map((s) => {
                   const key = `${group.id}-${s.id}`
@@ -77,7 +85,7 @@ function GroupList({ selected, onToggle }: { selected: Set<string>; onToggle: (k
                         <Checkbox checked={selected.has(key)} onCheckedChange={() => onToggle(key)} />
                         {s.full_name}
                       </span>
-                      <span className="text-sm text-muted-foreground">{s.phone}</span>
+                      <span className="text-sm text-muted-foreground">{s.email}</span>
                     </label>
                   )
                 })}
@@ -119,7 +127,7 @@ function PersonList({
           <div className="flex-1">
             <div className="flex items-center gap-2 font-medium">
               {p.full_name}
-              <span className="text-xs font-normal text-muted-foreground">{p.phone}</span>
+              <span className="text-xs font-normal text-muted-foreground">{p.email}</span>
               <span className="text-xs font-normal text-muted-foreground">{p.age} year</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm">
@@ -127,14 +135,6 @@ function PersonList({
               {type === "mentors" && (
                 <>
                   Level: <span className="text-primary">{p.level}</span>
-                </>
-              )}
-              {type === "leads" && (
-                <>
-                  <span className="text-primary">{p.course}</span>
-                  <Badge variant={p.tagVariant === "outline" ? "outline" : "secondary"} className="ml-1">
-                    {p.tag}
-                  </Badge>
                 </>
               )}
               {type === "graduates" && (
@@ -159,7 +159,6 @@ export function SmsMailingsPage() {
     group: new Set(),
     students: new Set(),
     mentors: new Set(),
-    leads: new Set(),
     graduates: new Set(),
   })
   const [title, setTitle] = useState("")
@@ -168,6 +167,7 @@ export function SmsMailingsPage() {
   const [templatesOpen, setTemplatesOpen] = useState(true)
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false)
   const [expandedHistory, setExpandedHistory] = useState<number[]>([])
+  const [toast, setToast] = useState<string | null>(null)
 
   const { data: templates } = useGetSmsTemplatesQuery()
   const { data: history } = useGetSmsHistoryQuery()
@@ -195,13 +195,22 @@ export function SmsMailingsPage() {
 
   const handleSend = async () => {
     if (selected.size === 0) return
-    await sendSms({
-      recipient_type: tab,
+    const res = await sendSms({
+      recipient_type: RECIPIENT_TYPE_FOR_TAB[tab],
       recipient_ids: Array.from(selected).map((k) => (typeof k === "number" ? k : Number(String(k).split("-")[1]))),
       template_id: templateId ?? undefined,
-      title,
+      subject: title,
       text: description,
-    })
+    }).unwrap()
+
+    if (!res.mail_enabled) {
+      setToast("Server is in test mode — the email was not actually sent.")
+    } else if (res.failed_count > 0) {
+      setToast(`Sent to ${res.sent_count}, failed for ${res.failed_count}.`)
+    } else {
+      setToast(`Sent to ${res.sent_count} recipient(s).`)
+    }
+
     setTitle("")
     setDescription("")
     setTemplateId(null)
@@ -215,7 +224,7 @@ export function SmsMailingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">SMS mailings</h1>
+        <h1 className="text-3xl font-bold">Email mailings</h1>
         <Button variant="outline" size="lg" onClick={() => setTemplatesDialogOpen(true)}>
           <ClipboardList /> TEMPLATES
         </Button>
@@ -271,8 +280,9 @@ export function SmsMailingsPage() {
 
         <div className="flex flex-col gap-6">
           <Card>
-            <h2 className="text-lg font-semibold">SMS text</h2>
-            <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <h2 className="text-lg font-semibold">Email text</h2>
+            <p className="text-xs text-muted-foreground">Only recipients with an email address are shown.</p>
+            <Input placeholder="Subject" value={title} onChange={(e) => setTitle(e.target.value)} />
             <textarea
               placeholder="Description"
               value={description}
@@ -360,6 +370,7 @@ export function SmsMailingsPage() {
       </div>
 
       <TemplatesDialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen} />
+      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   )
 }

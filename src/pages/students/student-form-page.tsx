@@ -144,12 +144,17 @@ export function StudentFormPage() {
             value={form.address}
             onChange={(e) => set("address", e.target.value)}
           />
-          <Input
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => set("email", e.target.value)}
-          />
+          <div className="flex flex-col gap-1">
+            <Input
+              type="email"
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => set("email", e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Required to give this student their own account.
+            </p>
+          </div>
 
           <div className="flex items-center gap-6">
             <Label className="w-28 text-base font-semibold">Status</Label>

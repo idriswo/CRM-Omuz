@@ -65,7 +65,7 @@ function ProfileHeaderCard({ profile }: { profile: Profile }) {
         </div>
         <div className="flex-1">
           <h2 className="text-xl font-bold">{profile.full_name}</h2>
-          {profile.role === "Admin" ? (
+          {profile.role === "Mentor" ? (
             <p className="text-primary font-medium">{profile.role}</p>
           ) : (
             <p className="font-medium text-muted-foreground">

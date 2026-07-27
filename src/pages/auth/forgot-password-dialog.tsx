@@ -16,15 +16,16 @@ import {
   useResetPasswordMutation,
   useVerifyResetCodeMutation,
 } from "@/store/services"
+import { apiErrorMessage } from "@/lib/api-error"
 
-type Step = "phone" | "otp" | "reset" | "done"
+type Step = "email" | "otp" | "reset" | "done"
 
 interface ForgotPasswordDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-const OTP_LENGTH = 4
+const OTP_LENGTH = 6
 
 function StepIcon({ children }: { children: ReactNode }) {
   return (
@@ -35,9 +36,11 @@ function StepIcon({ children }: { children: ReactNode }) {
 }
 
 export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialogProps) {
-  const [step, setStep] = useState<Step>("phone")
-  const [phone, setPhone] = useState("")
+  const [step, setStep] = useState<Step>("email")
+  const [email, setEmail] = useState("")
   const [code, setCode] = useState<string[]>(Array(OTP_LENGTH).fill(""))
+  const [resetToken, setResetToken] = useState("")
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -46,9 +49,11 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
   const [resetPassword, { isLoading: resetting }] = useResetPasswordMutation()
 
   const reset = () => {
-    setStep("phone")
-    setPhone("")
+    setStep("email")
+    setEmail("")
     setCode(Array(OTP_LENGTH).fill(""))
+    setResetToken("")
+    setAttemptsLeft(null)
     setError(null)
   }
 
@@ -61,10 +66,11 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
     e.preventDefault()
     setError(null)
     try {
-      await sendCode({ phone }).unwrap()
+      // Always 200 by design — the backend never reveals whether the address is registered.
+      await sendCode({ email }).unwrap()
       setStep("otp")
-    } catch {
-      setError("Could not send the code. Check the phone number and try again.")
+    } catch (err) {
+      setError(apiErrorMessage(err, { fallback: "Could not send the code. Please try again." }))
     }
   }
 
@@ -86,19 +92,30 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
 
   const handleRequestNewCode = async () => {
     setError(null)
+    setAttemptsLeft(null)
     setCode(Array(OTP_LENGTH).fill(""))
     otpRefs.current[0]?.focus()
-    await sendCode({ phone })
+    await sendCode({ email })
   }
 
   const handleVerifyCode = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError(null)
     try {
-      await verifyCode({ phone, code: code.join("") }).unwrap()
+      const res = await verifyCode({ email, code: code.join("") }).unwrap()
+      setResetToken(res.reset_token)
       setStep("reset")
-    } catch {
-      setError("Invalid code. Please try again.")
+    } catch (err) {
+      const data = (err as { data?: { attempts_left?: number } })?.data
+      if (typeof data?.attempts_left === "number") {
+        setAttemptsLeft(data.attempts_left)
+        setError(`Invalid code. ${data.attempts_left} attempts left.`)
+      } else {
+        setAttemptsLeft(null)
+        setError(apiErrorMessage(err, { fallback: "Invalid code. Please try again." }))
+        // 5 wrong attempts burns the code — send the user back to request a new one.
+        setStep("email")
+      }
     }
   }
 
@@ -115,17 +132,17 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
     }
 
     try {
-      await resetPassword({ phone, code: code.join(""), password }).unwrap()
+      await resetPassword({ reset_token: resetToken, new_password: password }).unwrap()
       setStep("done")
-    } catch {
-      setError("Could not reset the password. Please try again.")
+    } catch (err) {
+      setError(apiErrorMessage(err, { fallback: "Could not reset the password. Please try again." }))
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
-        {step === "phone" && (
+        {step === "email" && (
           <>
             <DialogHeader>
               <DialogTitle>Forgot password?</DialogTitle>
@@ -136,16 +153,16 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             <div className="text-center">
               <p className="font-semibold">Verification code</p>
               <DialogDescription>
-                Don&apos;t worry! We&apos;ll send to your phone number a code to reset your
-                password
+                Don&apos;t worry! We&apos;ll send a code to your email to reset your password
               </DialogDescription>
             </div>
             <form className="flex flex-col gap-4" onSubmit={handleSendCode}>
               <Input
-                placeholder="Phone"
+                type="email"
+                placeholder="Email"
                 required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <DialogFooter>
@@ -174,10 +191,10 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             </StepIcon>
             <div className="text-center">
               <p className="font-semibold">Verification code</p>
-              <DialogDescription>Enter the code that you received</DialogDescription>
+              <DialogDescription>Enter the code sent to {email}</DialogDescription>
             </div>
             <form className="flex flex-col gap-4" onSubmit={handleVerifyCode}>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2">
                 {code.map((digit, i) => (
                   <Input
                     key={i}
@@ -189,7 +206,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
                     onKeyDown={(e) => handleOtpKeyDown(i, e)}
                     inputMode="numeric"
                     maxLength={1}
-                    className="h-12 w-12 text-center text-lg font-semibold"
+                    className="h-12 w-10 text-center text-lg font-semibold"
                     autoFocus={i === 0}
                   />
                 ))}
@@ -203,6 +220,11 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
                 Request a new code
               </Button>
               {error && <p className="text-sm text-destructive">{error}</p>}
+              {attemptsLeft !== null && !error && (
+                <p className="text-center text-sm text-muted-foreground">
+                  {attemptsLeft} attempts left.
+                </p>
+              )}
               <DialogFooter>
                 <Button
                   type="button"
@@ -229,11 +251,12 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             </StepIcon>
             <p className="text-center font-semibold">Create a new password</p>
             <form className="flex flex-col gap-4" onSubmit={handleResetPassword}>
-              <Input name="password" type="password" placeholder="New password" required />
+              <Input name="password" type="password" placeholder="New password" minLength={8} required />
               <Input
                 name="confirm_password"
                 type="password"
                 placeholder="Confirm password"
+                minLength={8}
                 required
               />
               {error && <p className="text-sm text-destructive">{error}</p>}

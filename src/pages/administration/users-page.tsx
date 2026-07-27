@@ -1,6 +1,7 @@
 import { useState } from "react"
-import { Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,14 +13,21 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useGetUsersQuery } from "@/store/services"
+import { CreateUserDialog } from "./create-user-dialog"
 
 export function UsersPage() {
   const [search, setSearch] = useState("")
+  const [createOpen, setCreateOpen] = useState(false)
   const { data, isLoading } = useGetUsersQuery({ search, limit: 20 })
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold">Users</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Users</h1>
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus /> Add user
+        </Button>
+      </div>
 
       <div className="w-72">
         <div className="relative">
@@ -62,6 +70,8 @@ export function UsersPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
     </div>
   )
 }
