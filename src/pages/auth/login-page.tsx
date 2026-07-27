@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
+import { useDispatch } from "react-redux"
 import { Eye, EyeOff } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { api } from "@/store/api"
 import { useLoginMutation } from "@/store/services"
 import { homeRouteForRole, persistSession } from "@/lib/auth"
 import { ForgotPasswordDialog } from "./forgot-password-dialog"
@@ -14,6 +16,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false)
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const [login, { isLoading: loggingIn, error: loginError }] = useLoginMutation()
 
@@ -25,6 +28,9 @@ export function LoginPage() {
       password: String(form.get("password")),
     }).unwrap()
     const role = persistSession(res)
+    // Otherwise a login without a preceding logout (e.g. after a session expired)
+    // keeps serving the previous account's cached queries.
+    dispatch(api.util.resetApiState())
     navigate(homeRouteForRole(role))
   }
 

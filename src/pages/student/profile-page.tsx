@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom"
+import { useDispatch } from "react-redux"
 import { LogOut, UserRound } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { api } from "@/store/api"
 import { useGetMyStudentGroupsQuery, useGetMyStudentProfileQuery, useLogoutMutation } from "@/store/services"
 import { clearSession } from "@/lib/auth"
 
@@ -11,10 +13,13 @@ export function StudentProfilePage() {
   const { data: groups } = useGetMyStudentGroupsQuery()
   const [logout] = useLogoutMutation()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
 
   const handleLogout = async () => {
     await logout()
     clearSession()
+    // Otherwise the next account to log in (same tab, no reload) sees this one's cached data.
+    dispatch(api.util.resetApiState())
     navigate("/login")
   }
 

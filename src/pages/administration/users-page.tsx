@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -12,13 +12,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useGetUsersQuery } from "@/store/services"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { Toast } from "@/components/shared/toast"
+import { apiErrorMessage } from "@/lib/api-error"
+import { useDeleteUserMutation, useGetUsersQuery, type AdminUser } from "@/store/services"
 import { CreateUserDialog } from "./create-user-dialog"
 
 export function UsersPage() {
   const [search, setSearch] = useState("")
   const [createOpen, setCreateOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<AdminUser | null>(null)
+  const [toast, setToast] = useState<{ message: string; variant?: "success" | "error" } | null>(null)
   const { data, isLoading } = useGetUsersQuery({ search, limit: 20 })
+  const [deleteUser, { isLoading: deleting }] = useDeleteUserMutation()
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return
+    try {
+      await deleteUser(pendingDelete.id).unwrap()
+      setToast({ message: `${pendingDelete.full_name} deleted.` })
+    } catch (err) {
+      setToast({ message: apiErrorMessage(err), variant: "error" })
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -48,13 +64,14 @@ export function UsersPage() {
               <TableHead>Full name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Roles</TableHead>
-              <TableHead>Phone/User name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
@@ -64,7 +81,16 @@ export function UsersPage() {
                 <TableCell className="font-medium">{user.full_name}</TableCell>
                 <TableCell>{user.type}</TableCell>
                 <TableCell>{user.role_name}</TableCell>
-                <TableCell>{user.phone}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell className="text-right">
+                  <button
+                    className="rounded-md p-1.5 text-destructive hover:bg-accent"
+                    aria-label={`Delete ${user.full_name}`}
+                    onClick={() => setPendingDelete(user)}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -72,6 +98,23 @@ export function UsersPage() {
       </Card>
 
       <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={`Delete ${pendingDelete?.full_name ?? "this user"}?`}
+        description="This cannot be undone — they will lose access immediately."
+        loading={deleting}
+        onConfirm={handleDelete}
+      />
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }
