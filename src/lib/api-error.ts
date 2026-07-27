@@ -41,6 +41,12 @@ export function apiErrorMessage(
       return "This record no longer exists — refresh the page."
     case 401:
       return "Your session has expired. Please log in again."
+    case 429: {
+      const data = (err?.data ?? err?.response?.data) as { retry_after_seconds?: number } | undefined
+      const seconds = data?.retry_after_seconds
+      const wait = seconds ? ` Try again in ${Math.ceil(seconds / 60)} min.` : ""
+      return `Too many requests.${wait}`
+    }
   }
 
   return serverMessage(err) ?? options.fallback ?? "Something went wrong. Please try again."

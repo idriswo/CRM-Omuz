@@ -25,7 +25,15 @@ export function Sidebar() {
   const { pathname } = useLocation()
   const role = getRole()
   const items =
-    role === "student" ? studentNavItems : navItems.filter((item) => !item.roles || item.roles.includes(role!))
+    role === "student"
+      ? studentNavItems
+      : navItems
+          .filter((item) => !item.roles || item.roles.includes(role!))
+          .map((item) =>
+            item.children
+              ? { ...item, children: item.children.filter((child) => !child.roles || child.roles.includes(role!)) }
+              : item
+          )
   const [openGroups, setOpenGroups] = useState<string[]>(
     items.filter((item) => isChildActive(item, pathname)).map((item) => item.label)
   )

@@ -1,29 +1,45 @@
 import { api } from "@/store/api"
 
 export interface LoginBody {
-  phone: string
-  password: string
-}
-
-export interface RegisterBody {
-  first_name: string
-  last_name: string
-  birth_date: string
-  address: string
-  phone: string
-  parent_phone: string
+  email: string
   password: string
 }
 
 export interface AuthResponse {
   access_token: string
   refresh_token?: string
+  must_change_password?: boolean
   user?: {
     id?: number
     full_name?: string
     role?: string | { name?: string }
-    can_add_students?: boolean
   } | null
+}
+
+export interface ForgotPasswordBody {
+  email: string
+}
+
+export interface VerifyResetCodeBody {
+  email: string
+  code: string
+}
+
+export interface VerifyResetCodeResponse {
+  success: boolean
+  valid: boolean
+  reset_token: string
+  expires_in_minutes: number
+}
+
+export interface ResetPasswordBody {
+  reset_token: string
+  new_password: string
+}
+
+export interface ChangePasswordBody {
+  old_password: string
+  new_password: string
 }
 
 export const authApi = api.injectEndpoints({
@@ -31,29 +47,30 @@ export const authApi = api.injectEndpoints({
     login: build.mutation<AuthResponse, LoginBody>({
       query: (body) => ({ url: "/auth/login", method: "post", data: body }),
     }),
-    register: build.mutation<{ success: boolean }, RegisterBody>({
-      query: (body) => ({ url: "/auth/register", method: "post", data: body }),
-    }),
-    forgotPassword: build.mutation<{ success: boolean }, { phone: string }>({
+    forgotPassword: build.mutation<{ message: string }, ForgotPasswordBody>({
       query: (body) => ({
         url: "/auth/forgot-password",
         method: "post",
         data: body,
       }),
     }),
-    verifyResetCode: build.mutation<{ success: boolean }, { phone: string; code: string }>({
+    verifyResetCode: build.mutation<VerifyResetCodeResponse, VerifyResetCodeBody>({
       query: (body) => ({
         url: "/auth/verify-reset-code",
         method: "post",
         data: body,
       }),
     }),
-    resetPassword: build.mutation<
-      { success: boolean },
-      { phone: string; code: string; password: string }
-    >({
+    resetPassword: build.mutation<{ success: boolean }, ResetPasswordBody>({
       query: (body) => ({
         url: "/auth/reset-password",
+        method: "post",
+        data: body,
+      }),
+    }),
+    changePassword: build.mutation<{ success: boolean }, ChangePasswordBody>({
+      query: (body) => ({
+        url: "/auth/change-password",
         method: "post",
         data: body,
       }),
@@ -66,9 +83,9 @@ export const authApi = api.injectEndpoints({
 
 export const {
   useLoginMutation,
-  useRegisterMutation,
   useForgotPasswordMutation,
   useVerifyResetCodeMutation,
   useResetPasswordMutation,
+  useChangePasswordMutation,
   useLogoutMutation,
 } = authApi

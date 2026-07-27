@@ -1,11 +1,14 @@
-import { Navigate, Route, Routes } from "react-router-dom"
+import { useEffect } from "react"
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom"
 
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthLayout } from "@/components/layout/auth-layout"
 import { MainLayout } from "@/components/layout/main-layout"
 import { RequireRole } from "@/components/require-role"
 import { getRole, homeRouteForRole, isAuthenticated } from "@/lib/auth"
+import { registerMustChangePasswordHandler } from "@/lib/axios"
 import { LoginPage } from "@/pages/auth/login-page"
+import { ChangePasswordPage } from "@/pages/auth/change-password-page"
 import { BranchesPage } from "@/pages/branches/branches-page"
 import { UsersPage } from "@/pages/administration/users-page"
 import { PermissionsPage } from "@/pages/administration/permissions-page"
@@ -54,33 +57,54 @@ function RoleHome() {
   return <Navigate to={homeRouteForRole(getRole())} replace />
 }
 
+/** Wires the axios 403/must_change_password interceptor to React Router's navigate. */
+function MustChangePasswordListener() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    registerMustChangePasswordHandler(() => navigate("/change-password", { replace: true }))
+  }, [navigate])
+  return null
+}
+
 const App = () => {
   return (
     <ThemeProvider>
+      <MustChangePasswordListener />
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
         </Route>
 
         <Route element={<MainLayout />}>
-          {/* Staff: admin, superadmin, director */}
-          <Route element={<RequireRole roles={["admin", "superadmin", "director"]} />}>
+          {/* Groups list/detail: every staff role, plus students (read-only, see the RBAC doc) */}
+          <Route element={<RequireRole roles={["mentor", "superadmin", "director", "student"]} />}>
+            <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/groups/:id" element={<GroupDetailPage />} />
+          </Route>
+
+          {/* Mentor + superadmin + director: groups/journal/students are viewable, timetable is read-only for mentor */}
+          <Route element={<RequireRole roles={["mentor", "superadmin", "director"]} />}>
+            <Route path="/groups/:id/journal" element={<JournalPage />} />
+            <Route path="/students" element={<StudentsPage />} />
+            <Route path="/students/activity" element={<StudentActivityPage />} />
+            <Route path="/students/leaders" element={<LeadersPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/performance" element={<PerformancePage />} />
+            <Route path="/timetable" element={<TimetablePage />} />
+          </Route>
+
+          {/* Superadmin + director only */}
+          <Route element={<RequireRole roles={["superadmin", "director"]} />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/branches" element={<BranchesPage />} />
-            <Route path="/students" element={<StudentsPage />} />
+
             <Route path="/students/new" element={<StudentFormPage />} />
+            <Route path="/students/:id/edit" element={<StudentFormPage />} />
+            <Route path="/students/:id/contract" element={<ContractPage />} />
             <Route path="/students/graduates" element={<GraduatesPage />} />
             <Route path="/students/left-courses" element={<LeftCoursesPage />} />
             <Route path="/students/enroll" element={<EnrollStudentsPage />} />
-            <Route path="/students/leaders" element={<LeadersPage />} />
-            <Route path="/students/activity" element={<StudentActivityPage />} />
-            <Route path="/students/:id/edit" element={<StudentFormPage />} />
-            <Route path="/students/:id/contract" element={<ContractPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/profile/performance" element={<PerformancePage />} />
-            <Route path="/groups" element={<GroupsPage />} />
-            <Route path="/groups/:id" element={<GroupDetailPage />} />
-            <Route path="/groups/:id/journal" element={<JournalPage />} />
 
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/employees/new" element={<AddEmployeePage />} />
@@ -92,17 +116,13 @@ const App = () => {
             <Route path="/courses/leads" element={<LeadsPage />} />
             <Route path="/courses/coupons" element={<CouponsPage />} />
 
-            <Route path="/timetable" element={<TimetablePage />} />
             <Route path="/sms-mailings" element={<SmsMailingsPage />} />
             <Route path="/progressbook" element={<ProgressbookPage />} />
             <Route path="/jobs" element={<JobsPage />} />
 
-            {/* Superadmin + director only */}
-            <Route element={<RequireRole roles={["superadmin", "director"]} />}>
-              <Route path="/administration/users" element={<UsersPage />} />
-              <Route path="/administration/permissions" element={<PermissionsPage />} />
-              <Route path="/administration/logs" element={<LogsPage />} />
-            </Route>
+            <Route path="/administration/users" element={<UsersPage />} />
+            <Route path="/administration/permissions" element={<PermissionsPage />} />
+            <Route path="/administration/logs" element={<LogsPage />} />
 
             {/* Director only (Finance) */}
             <Route element={<RequireRole roles={["director"]} />}>

@@ -21,7 +21,7 @@ export function LoginPage() {
     e.preventDefault()
     const form = new FormData(e.currentTarget)
     const res = await login({
-      phone: String(form.get("phone")),
+      email: String(form.get("email")),
       password: String(form.get("password")),
     }).unwrap()
     const role = persistSession(res)
@@ -32,8 +32,8 @@ export function LoginPage() {
     <Card className="w-full max-w-md p-8 shadow-md">
       <form className="flex flex-col gap-4" onSubmit={handleLogin}>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" name="phone" placeholder="Phone" required />
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" placeholder="Email" required />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">Password</Label>
@@ -58,7 +58,7 @@ export function LoginPage() {
 
         {loginError && (
           <p className="text-sm text-destructive">
-            Phone or password is incorrect.
+            Email or password is incorrect.
           </p>
         )}
 

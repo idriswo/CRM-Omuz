@@ -10,16 +10,30 @@ export interface AdminUser {
   role_name: string
   role?: { id: number; name: string }
   branch_id: number
-  can_add_students?: boolean
+  employee_id?: number | null
 }
 
 export interface UserBody {
-  full_name: string
-  phone: string
   email: string
+  full_name: string
   role_id: number
-  branch_id: number
+  phone?: string
+  branch_id?: number
+  /** Links a mentor's account to their Employee record, so they see their own timetable. */
+  employee_id?: number
+}
+
+export interface LoginCredentials {
+  email: string
   password: string
+}
+
+export interface CreateUserResponse extends AdminUser {
+  must_change_password: boolean
+  email_sent: boolean
+  email_error?: string
+  /** Only ever returned this one time — the backend doesn't store the plaintext password. */
+  login_credentials?: LoginCredentials
 }
 
 function normalizeUser(raw: AdminUser): AdminUser {
@@ -41,7 +55,7 @@ export const usersApi = api.injectEndpoints({
       }),
       providesTags: ["Users"],
     }),
-    createUser: build.mutation<AdminUser, UserBody>({
+    createUser: build.mutation<CreateUserResponse, UserBody>({
       query: (data) => ({ url: "/users", method: "post", data }),
       invalidatesTags: ["Users"],
     }),

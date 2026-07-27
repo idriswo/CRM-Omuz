@@ -17,7 +17,7 @@ export interface SmsHistoryItem {
 export interface SmsGroupStudent {
   id: number
   full_name: string
-  phone: string
+  email: string
 }
 
 export interface SmsGroup {
@@ -32,7 +32,7 @@ export interface SmsGroup {
 export interface SmsPerson {
   id: number
   full_name: string
-  phone: string
+  email: string
   age: number
   course: string
   fatherPhone?: string
@@ -43,40 +43,44 @@ export interface SmsPerson {
   bank?: string
 }
 
-export type SmsRecipientType = "group" | "students" | "mentors" | "leads" | "graduates"
+/** "leads" was dropped — leads have no email address to send to. */
+export type SmsRecipientType = "group" | "students" | "mentors" | "graduates"
 
 export const smsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getSmsTemplates: build.query<{ data: SmsTemplate[] }, void>({
-      query: () => ({ url: "/sms/templates" }),
+      query: () => ({ url: "/email/templates" }),
       providesTags: ["SmsTemplates"],
     }),
     createSmsTemplate: build.mutation<SmsTemplate, { title: string; description: string }>({
-      query: (data) => ({ url: "/sms/templates", method: "post", data }),
+      query: (data) => ({ url: "/email/templates", method: "post", data }),
       invalidatesTags: ["SmsTemplates"],
     }),
     updateSmsTemplate: build.mutation<SmsTemplate, { id: number; data: Partial<SmsTemplate> }>({
-      query: ({ id, data }) => ({ url: `/sms/templates/${id}`, method: "put", data }),
+      query: ({ id, data }) => ({ url: `/email/templates/${id}`, method: "put", data }),
       invalidatesTags: ["SmsTemplates"],
     }),
     deleteSmsTemplate: build.mutation<{ success: boolean }, number>({
-      query: (id) => ({ url: `/sms/templates/${id}`, method: "delete" }),
+      query: (id) => ({ url: `/email/templates/${id}`, method: "delete" }),
       invalidatesTags: ["SmsTemplates"],
     }),
 
     getSmsGroups: build.query<{ data: SmsGroup[] }, void>({
-      query: () => ({ url: "/sms/recipients/group" }),
+      query: () => ({ url: "/email/recipients/group" }),
     }),
     getSmsRecipients: build.query<{ data: SmsPerson[] }, { type: Exclude<SmsRecipientType, "group">; search?: string }>({
-      query: ({ type, search }) => ({ url: `/sms/recipients/${type}`, params: { search } }),
+      query: ({ type, search }) => ({ url: `/email/recipients/${type}`, params: { search } }),
     }),
 
-    sendSms: build.mutation<{ success: boolean }, { recipient_type: SmsRecipientType; recipient_ids: number[]; template_id?: number; title?: string; text?: string }>({
-      query: (data) => ({ url: "/sms/send", method: "post", data }),
+    sendSms: build.mutation<
+      { success: boolean; sent_count: number; failed_count: number; recipients_count: number; mail_enabled: boolean },
+      { recipient_type: "Student" | "Employee" | "Graduate"; recipient_ids: number[]; template_id?: number; subject?: string; text?: string }
+    >({
+      query: (data) => ({ url: "/email/send", method: "post", data }),
       invalidatesTags: [],
     }),
     getSmsHistory: build.query<{ data: SmsHistoryItem[] }, { search?: string } | void>({
-      query: (params) => ({ url: "/sms/history", params: params ?? {} }),
+      query: (params) => ({ url: "/email/history", params: params ?? {} }),
     }),
   }),
 })

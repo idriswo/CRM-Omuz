@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Avatar } from "@/components/shared/avatar"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Toast } from "@/components/shared/toast"
+import { apiErrorMessage } from "@/lib/api-error"
 import {
   useDeleteStudentMutation,
   useGetBranchesQuery,
@@ -57,6 +58,7 @@ export function StudentInfoSheet({
   const [confirm, setConfirm] = useState<"block" | "unblock" | "delete" | null>(null)
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteError, setInviteError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
 
   const blocked = data?.status === "inactive"
@@ -185,6 +187,7 @@ export function StudentInfoSheet({
               className="bg-accent text-primary"
               onClick={() => {
                 setInviteEmail(data?.email ?? "")
+                setInviteError(null)
                 setInviteOpen(true)
               }}
             >
@@ -205,13 +208,20 @@ export function StudentInfoSheet({
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
           />
+          {inviteError && <p className="text-sm text-destructive">{inviteError}</p>}
           <DialogFooter>
             <Button
               disabled={!inviteEmail}
               onClick={async () => {
-                await invite({ id: studentId, email: inviteEmail })
-                setInviteOpen(false)
-                setToast("Invite is success sent!")
+                try {
+                  await invite({ id: studentId, email: inviteEmail }).unwrap()
+                  setInviteOpen(false)
+                  setToast("Invite is success sent!")
+                } catch (err) {
+                  setInviteError(
+                    apiErrorMessage(err, { conflict: "A user with this email already exists." })
+                  )
+                }
               }}
             >
               Invite
