@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react"
-import { CheckCircle2, Copy } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -30,9 +29,12 @@ import {
 export function CreateUserDialog({
   open,
   onOpenChange,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Fires right before the dialog closes, so the caller can toast on email_sent:false. */
+  onCreated?: (result: CreateUserResponse) => void
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -40,13 +42,18 @@ export function CreateUserDialog({
         <DialogHeader>
           <DialogTitle>Add user</DialogTitle>
         </DialogHeader>
-        <CreateUserForm onDone={() => onOpenChange(false)} />
+        <CreateUserForm
+          onDone={(result) => {
+            if (result) onCreated?.(result)
+            onOpenChange(false)
+          }}
+        />
       </DialogContent>
     </Dialog>
   )
 }
 
-function CreateUserForm({ onDone }: { onDone: () => void }) {
+function CreateUserForm({ onDone }: { onDone: (result?: CreateUserResponse) => void }) {
   const { data: roles } = useGetRolesQuery()
   const { data: branches } = useGetBranchesQuery()
   const { data: employees } = useGetEmployeesQuery()
@@ -58,7 +65,6 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
   const [branchId, setBranchId] = useState("")
   const [employeeId, setEmployeeId] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [created, setCreated] = useState<CreateUserResponse | null>(null)
 
   const mentorRoleId = roles?.data.find((r) => r.name === "mentor")?.id
   const isMentor = roleId !== "" && mentorRoleId !== undefined && Number(roleId) === mentorRoleId
@@ -67,6 +73,8 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
     e.preventDefault()
     setError(null)
     try {
+      // The password is generated server-side and only ever emailed to the new
+      // user — we never show or store it here, even if delivery fails.
       const res = await createUser({
         email: email.trim(),
         full_name: fullName.trim(),
@@ -74,52 +82,10 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
         branch_id: branchId ? Number(branchId) : undefined,
         employee_id: isMentor && employeeId ? Number(employeeId) : undefined,
       }).unwrap()
-
-      if (res.email_sent) {
-        onDone()
-      } else {
-        // No inbox got the password — show it once so staff can hand it over manually.
-        setCreated(res)
-      }
+      onDone(res)
     } catch (err) {
       setError(apiErrorMessage(err, { conflict: "This email is already registered." }))
     }
-  }
-
-  if (created?.login_credentials) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-          <p className="font-semibold">Could not email the credentials.</p>
-          <p className="text-muted-foreground">Share these with the new user yourself.</p>
-        </div>
-        <div className="flex flex-col gap-2 rounded-lg border border-border p-4 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Email</span>
-            <span className="font-medium">{created.login_credentials.email}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Password</span>
-            <span className="flex items-center gap-2 font-mono font-medium">
-              {created.login_credentials.password}
-              <button
-                type="button"
-                aria-label="Copy password"
-                onClick={() => navigator.clipboard.writeText(created.login_credentials!.password)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Copy className="size-3.5" />
-              </button>
-            </span>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={onDone}>
-            <CheckCircle2 /> Done
-          </Button>
-        </DialogFooter>
-      </div>
-    )
   }
 
   return (
@@ -194,10 +160,14 @@ function CreateUserForm({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
+      <p className="text-xs text-muted-foreground">
+        Their login and a generated password are emailed to them directly.
+      </p>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onDone}>
+        <Button type="button" variant="outline" onClick={() => onDone()}>
           Cancel
         </Button>
         <Button type="submit" disabled={isLoading || !roleId}>

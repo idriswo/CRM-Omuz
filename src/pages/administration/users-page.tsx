@@ -97,7 +97,20 @@ export function UsersPage() {
         </Table>
       </Card>
 
-      <CreateUserDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <CreateUserDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(result) => {
+          if (result.email_sent) {
+            setToast({ message: `Invite sent to ${result.email}.` })
+          } else {
+            setToast({
+              message: `Could not email ${result.email} — ask them to use "Forgot password?" on the login page.`,
+              variant: "error",
+            })
+          }
+        }}
+      />
 
       <ConfirmDialog
         open={!!pendingDelete}
