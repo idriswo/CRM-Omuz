@@ -38,11 +38,14 @@ import {
 } from "@/components/ui/table"
 import { ReasonDialog } from "./reason-dialog"
 import {
+  MONTH_NAMES,
   useGetAttendanceChartQuery,
   useGetAttendanceLogQuery,
   useGetDashboardStatsQuery,
   useGetEmployedGraduatesQuery,
+  useGetEnrolledQuery,
   useGetEnrollChartQuery,
+  useGetGraduatesQuery,
   useGetGroupsSummaryQuery,
   useGetIncomeThisMonthQuery,
   useGetLeadsChartQuery,
@@ -79,28 +82,76 @@ function formatDate(iso: string) {
   return `${d}.${m}.${y}`
 }
 
+const today = new Date()
+const isoDay = (d: Date) => d.toISOString().slice(0, 10)
+/** `/dashboard/income` and `/dashboard/attendance-chart` take any date inside
+ * the month they should report on (`new Date(month)` on the server). */
+const monthKey = (year: number, month: number) =>
+  `${year}-${String(month + 1).padStart(2, "0")}-01`
+
 export function DashboardPage() {
-  const [date, setDate] = useState("2024-08-28")
-  const [leadsYear, setLeadsYear] = useState(2024)
-  const [incomeMonth, setIncomeMonth] = useState("December")
-  const [attendanceMonth, setAttendanceMonth] = useState("February 2024")
+  const [date, setDate] = useState(isoDay(today))
+  const [leadsYear, setLeadsYear] = useState(today.getFullYear())
+  const [incomeCursor, setIncomeCursor] = useState({
+    year: today.getFullYear(),
+    month: today.getMonth(),
+  })
+  const [attendanceCursor, setAttendanceCursor] = useState({
+    year: today.getFullYear(),
+    month: today.getMonth(),
+  })
   const [reasonOverrides, setReasonOverrides] = useState<Record<number, string>>({})
 
   const { data: stats } = useGetDashboardStatsQuery()
-  const { data: attendanceLog } = useGetAttendanceLogQuery()
+  const { data: attendanceLog } = useGetAttendanceLogQuery({ date })
   const { data: groups } = useGetGroupsSummaryQuery()
   const { data: leadsChart } = useGetLeadsChartQuery({ year: leadsYear })
-  const { data: attendanceChart } = useGetAttendanceChartQuery({ month: attendanceMonth })
-  const { data: income } = useGetIncomeThisMonthQuery({ month: incomeMonth })
-  const { data: enroll } = useGetEnrollChartQuery()
-  const { data: graduates } = useGetEmployedGraduatesQuery({ limit: 5 })
+  const { data: attendanceChart } = useGetAttendanceChartQuery({
+    month: monthKey(attendanceCursor.year, attendanceCursor.month),
+  })
+  const { data: income } = useGetIncomeThisMonthQuery({
+    month: monthKey(incomeCursor.year, incomeCursor.month),
+  })
+  // Previous month, so the card can state a real change instead of a hardcoded 0%.
+  const { data: previousIncome } = useGetIncomeThisMonthQuery({
+    month: monthKey(
+      incomeCursor.month === 0 ? incomeCursor.year - 1 : incomeCursor.year,
+      incomeCursor.month === 0 ? 11 : incomeCursor.month - 1
+    ),
+  })
+  const { data: enrollChart } = useGetEnrollChartQuery({ year: today.getFullYear() })
+  const { data: enrolled } = useGetEnrolledQuery({ limit: 5 })
+  const { data: graduateStats } = useGetEmployedGraduatesQuery()
+  const { data: graduates } = useGetGraduatesQuery({ limit: 5 })
   const { data: leftCourses } = useGetDashboardLeftCoursesQuery()
 
-  const incomePct = income?.percent ?? 0
+  const incomeAmount = income?.amount ?? 0
+  const previousAmount = previousIncome?.amount ?? 0
+  const incomeDiff =
+    previousAmount === 0
+      ? incomeAmount === 0
+        ? 0
+        : 100
+      : Math.round(((incomeAmount - previousAmount) / previousAmount) * 100)
+  // Share of the two months' combined income, so the donut always has a scale.
+  const incomePct =
+    incomeAmount + previousAmount === 0
+      ? 0
+      : Math.round((incomeAmount / (incomeAmount + previousAmount)) * 100)
   const incomeDonut = [
     { name: "Income", value: incomePct, color: "#8b5cf6" },
     { name: "Rest", value: 100 - incomePct, color: "var(--color-muted)" },
   ]
+
+  const shiftMonth = (
+    cursor: { year: number; month: number },
+    step: number
+  ): { year: number; month: number } => {
+    const month = cursor.month + step
+    if (month < 0) return { year: cursor.year - 1, month: 11 }
+    if (month > 11) return { year: cursor.year + 1, month: 0 }
+    return { year: cursor.year, month }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -162,7 +213,7 @@ export function DashboardPage() {
                     <span>
                       <div className="font-semibold">{g.name}</div>
                       <div className="text-xs text-muted-foreground">
-                        Absent: {g.absent} Late: {g.late}
+                        Absent: {g.absent} Present: {g.present}
                       </div>
                     </span>
                   </span>
@@ -268,16 +319,24 @@ export function DashboardPage() {
             <h2 className="text-lg font-semibold">Income In this month</h2>
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-3">
-                <span className="text-3xl font-bold">{income?.amount?.toLocaleString() ?? 0} c</span>
+                <span className="text-3xl font-bold">{incomeAmount.toLocaleString()} c</span>
                 <span className="text-sm text-muted-foreground">
-                  {income?.diff_from_last_month ?? 0}% less than last month
+                  {Math.abs(incomeDiff)}% {incomeDiff < 0 ? "less" : "more"} than last month
                 </span>
                 <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-medium w-fit">
-                  <button onClick={() => setIncomeMonth("November")} className="hover:text-primary" aria-label="Previous month">
+                  <button
+                    onClick={() => setIncomeCursor((c) => shiftMonth(c, -1))}
+                    className="hover:text-primary"
+                    aria-label="Previous month"
+                  >
                     <CaretLeft className="size-4" />
                   </button>
-                  {incomeMonth}
-                  <button onClick={() => setIncomeMonth("January")} className="hover:text-primary" aria-label="Next month">
+                  {MONTH_NAMES[incomeCursor.month]} {incomeCursor.year}
+                  <button
+                    onClick={() => setIncomeCursor((c) => shiftMonth(c, 1))}
+                    className="hover:text-primary"
+                    aria-label="Next month"
+                  >
                     <CaretRight className="size-4" />
                   </button>
                 </div>
@@ -304,7 +363,7 @@ export function DashboardPage() {
           <div className="flex items-center gap-6">
             <h2 className="text-lg font-semibold">Attendance</h2>
             <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="size-2.5 rounded-full bg-emerald-500" /> Late
+              <span className="size-2.5 rounded-full bg-emerald-500" /> Present
             </div>
             <div className="flex items-center gap-2 text-sm font-medium">
               <span className="size-2.5 rounded-full bg-red-500" /> Absent
@@ -312,15 +371,17 @@ export function DashboardPage() {
           </div>
           <div className="flex items-center gap-1 rounded-lg border border-input px-2 py-1">
             <button
-              onClick={() => setAttendanceMonth("January 2024")}
+              onClick={() => setAttendanceCursor((c) => shiftMonth(c, -1))}
               className="rounded p-1 hover:bg-accent"
               aria-label="Previous month"
             >
               <CaretLeft className="size-4" />
             </button>
-            <span className="text-sm font-medium">{attendanceMonth}</span>
+            <span className="text-sm font-medium">
+              {MONTH_NAMES[attendanceCursor.month]} {attendanceCursor.year}
+            </span>
             <button
-              onClick={() => setAttendanceMonth("March 2024")}
+              onClick={() => setAttendanceCursor((c) => shiftMonth(c, 1))}
               className="rounded p-1 hover:bg-accent"
               aria-label="Next month"
             >
@@ -345,7 +406,7 @@ export function DashboardPage() {
               <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
               <Tooltip content={<SimpleTooltip />} />
-              <Area type="monotone" dataKey="late" name="Late" stroke="#22c55e" strokeWidth={2} fill="url(#lateFill)" />
+              <Area type="monotone" dataKey="present" name="Present" stroke="#22c55e" strokeWidth={2} fill="url(#lateFill)" />
               <Area type="monotone" dataKey="absent" name="Absent" stroke="#ef4444" strokeWidth={2} fill="url(#absentFill)" />
             </AreaChart>
           </ResponsiveContainer>
@@ -362,7 +423,7 @@ export function DashboardPage() {
           </div>
           <div className="h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={enroll?.chart ?? []}>
+              <AreaChart data={enrollChart?.data ?? []}>
                 <defs>
                   <linearGradient id="enrollFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#6366f1" stopOpacity={0.5} />
@@ -381,15 +442,15 @@ export function DashboardPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Full name</TableHead>
-                <TableHead>Course</TableHead>
+                <TableHead>Group</TableHead>
                 <TableHead>Phone</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {enroll?.data?.map((e) => (
+              {enrolled?.data?.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.full_name}</TableCell>
-                  <TableCell>{e.course}</TableCell>
+                  <TableCell>{e.group}</TableCell>
                   <TableCell>{e.phone}</TableCell>
                 </TableRow>
               ))}
@@ -400,7 +461,9 @@ export function DashboardPage() {
         <div className="flex flex-col gap-6">
           <Card className="p-0">
             <div className="flex items-center justify-between p-6 pb-0">
-              <h2 className="text-lg font-semibold">Employed graduates ({graduates?.meta?.total ?? 0})</h2>
+              <h2 className="text-lg font-semibold">
+                Employed graduates ({graduateStats?.employed ?? 0})
+              </h2>
               <Link to="/students/graduates" className="flex items-center gap-1 text-sm font-medium text-primary">
                 See more <CaretRight className="size-4" />
               </Link>
@@ -409,7 +472,7 @@ export function DashboardPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Full name</TableHead>
-                  <TableHead>Course</TableHead>
+                  <TableHead>Group</TableHead>
                   <TableHead>Date of issue</TableHead>
                   <TableHead>Work</TableHead>
                 </TableRow>
@@ -428,7 +491,7 @@ export function DashboardPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>{g.course}</TableCell>
+                    <TableCell>{g.group}</TableCell>
                     <TableCell>{g.date_of_issue}</TableCell>
                     <TableCell className="font-medium">{g.work_place}</TableCell>
                   </TableRow>
@@ -450,7 +513,7 @@ export function DashboardPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={leftCourses?.data ?? []}>
                   <CartesianGrid vertical={false} stroke="var(--color-border)" />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
+                  <XAxis dataKey="course" tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 11 }} />
                   <YAxis hide />
                   <Tooltip content={<SimpleTooltip />} cursor={{ fill: "var(--color-muted)" }} />
                   <Bar dataKey="count" name="Left courses" fill="#60a5fa" radius={[6, 6, 0, 0]} />

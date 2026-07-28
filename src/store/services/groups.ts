@@ -1,5 +1,5 @@
 import { api } from "@/store/api"
-import type { Envelope, ListParams } from "./types"
+import { toEnvelope, type Envelope, type ListParams } from "./types"
 
 export type GroupStatus = "Started" | "Pending" | "Finished"
 
@@ -111,10 +111,10 @@ export const groupsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getGroups: build.query<Envelope<Group>, GroupsParams | void>({
       query: (params) => ({ url: "/groups", params: params ?? {} }),
-      transformResponse: (response: Envelope<Group>) => ({
-        ...response,
-        data: response.data.map(normalizeGroup),
-      }),
+      transformResponse: (response: Group[] | Envelope<Group>) => {
+        const envelope = toEnvelope(response)
+        return { ...envelope, data: envelope.data.map(normalizeGroup) }
+      },
       providesTags: ["Groups"],
     }),
     getGroup: build.query<GroupDetail, number>({

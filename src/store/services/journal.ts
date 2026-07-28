@@ -19,6 +19,9 @@ export interface JournalStudentRow {
 }
 
 export interface JournalWeek {
+  /** Row id of the week. The write endpoints accept either this or `week_number`
+   * (the backend's `resolveWeek` tries the number first), so it is optional. */
+  week_id?: number
   week_number: number
   dates: string[]
   students: JournalStudentRow[]
@@ -63,68 +66,92 @@ interface RawJournalStudent {
   first_name?: string
   last_name?: string
   full_name?: string
-  entries: RawJournalEntry[]
+  /** Current backend shape — already one row per day. */
+  days?: JournalDay[]
+  /** Older backend shape — raw `JournalEntry` rows to fold into `days`. */
+  entries?: RawJournalEntry[]
+  bonus?: number
+  exam?: number
+  sum?: number
 }
 
 interface RawJournalWeek {
-  week_id: number
+  week_id?: number
   week_number: number
-  dates: string[]
-  students: RawJournalStudent[]
+  dates?: string[]
+  students?: RawJournalStudent[]
 }
 
 interface RawJournal {
   group_id: number
   group_name: string
-  weeks: RawJournalWeek[]
+  weeks?: RawJournalWeek[]
+  chart?: JournalChartPoint[]
+  students?: { id: number; name: string }[]
+  sheet_url?: string | null
 }
 
-/** Real backend nests raw attendance/score `entries` per student per week and has
- * no chart/top-level student list or weekly sum/bonus/exam totals — this reshapes
- * it into what the (richer, mock-built) journal grid + chart expect. */
+/**
+ * `GET /groups/:id/journal` already returns the grid the page renders
+ * (`weeks[].students[].days[]` plus `chart`, `students` and `sheet_url`), so this
+ * mostly passes the payload through. It still folds the older `entries[]` shape
+ * into `days[]` and fills in `chart`/`students` when they are absent, and it
+ * defaults every list — an empty journal used to arrive without `entries` and
+ * crashed the whole page with "Cannot read properties of undefined (reading 'map')".
+ */
 function normalizeJournal(raw: RawJournal): Journal {
   const studentNames = new Map<number, string>()
 
-  const weeks: JournalWeek[] = raw.weeks.map((week) => ({
+  const weeks: JournalWeek[] = (raw?.weeks ?? []).map((week) => ({
+    week_id: week.week_id,
     week_number: week.week_number,
-    dates: week.dates,
-    students: week.students.map((student) => {
-      const full_name = student.full_name || [student.first_name, student.last_name].filter(Boolean).join(" ")
+    dates: week.dates ?? [],
+    students: (week.students ?? []).map((student) => {
+      const full_name =
+        student.full_name || [student.first_name, student.last_name].filter(Boolean).join(" ")
       studentNames.set(student.student_id, full_name)
-      const days: JournalDay[] = student.entries.map((entry) => ({
-        date: entry.day_date,
-        attendance: entry.attendance,
-        score: entry.score,
-        comment: "",
-      }))
+
+      const entries = student.entries ?? []
+      const days: JournalDay[] =
+        student.days ??
+        entries.map((entry) => ({
+          date: entry.day_date,
+          attendance: entry.attendance,
+          score: entry.score,
+          comment: "",
+        }))
+
       return {
         student_id: student.student_id,
         full_name,
         days,
-        bonus: student.entries.reduce((sum, e) => sum + (e.bonus ?? 0), 0),
-        exam: student.entries.reduce((sum, e) => sum + (e.exam ?? 0), 0),
-        sum: days.reduce((sum, d) => sum + (d.score ?? 0), 0),
+        bonus: student.bonus ?? entries.reduce((sum, e) => sum + (e.bonus ?? 0), 0),
+        exam: student.exam ?? entries.reduce((sum, e) => sum + (e.exam ?? 0), 0),
+        sum: student.sum ?? days.reduce((sum, d) => sum + (d.score ?? 0), 0),
       }
     }),
   }))
 
-  const chart: JournalChartPoint[] = weeks.map((week) => {
-    const point: JournalChartPoint = { week: `Week ${week.week_number}` }
-    for (const student of week.students) {
-      const scored = student.days.filter((d) => d.score !== null)
-      point[student.full_name] = scored.length
-        ? Math.round(scored.reduce((s, d) => s + (d.score ?? 0), 0) / scored.length)
-        : 0
-    }
-    return point
-  })
+  const chart: JournalChartPoint[] =
+    raw?.chart ??
+    weeks.map((week) => {
+      const point: JournalChartPoint = { week: `Week ${week.week_number}` }
+      for (const student of week.students) {
+        const scored = student.days.filter((d) => d.score !== null)
+        point[student.full_name] = scored.length
+          ? Math.round(scored.reduce((s, d) => s + (d.score ?? 0), 0) / scored.length)
+          : 0
+      }
+      return point
+    })
 
   return {
-    group_id: raw.group_id,
-    group_name: raw.group_name,
+    group_id: raw?.group_id,
+    group_name: raw?.group_name,
     weeks,
     chart,
-    students: Array.from(studentNames, ([id, name]) => ({ id, name })),
+    students: raw?.students ?? Array.from(studentNames, ([id, name]) => ({ id, name })),
+    sheet_url: raw?.sheet_url ?? null,
   }
 }
 

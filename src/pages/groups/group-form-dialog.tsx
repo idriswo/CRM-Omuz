@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react"
 
+import { apiErrorMessage } from "@/lib/api-error"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -76,12 +77,16 @@ function FormSelect({
   options,
   onChange,
   className,
+  empty,
 }: {
   label: string
   value: string
   options: { value: string; label: string }[]
   onChange: (value: string) => void
   className?: string
+  /** Shown inside the menu when there is nothing to pick, so an empty list
+   * doesn't look like a broken dropdown. */
+  empty?: string
 }) {
   return (
     <Field label={label} filled={value !== ""} className={className}>
@@ -90,11 +95,15 @@ function FormSelect({
           <SelectValue placeholder={label} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
+          {options.length === 0 && empty ? (
+            <p className="px-3 py-2 text-sm text-muted-foreground">{empty}</p>
+          ) : (
+            options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))
+          )}
         </SelectContent>
       </Select>
     </Field>
@@ -119,11 +128,13 @@ export function GroupFormDialog({
 
   const [form, setForm] = useState<GroupBody>(emptyForm)
   const [loadedId, setLoadedId] = useState<number | null>(null)
+  const [error, setError] = useState("")
 
   // Seed the form from the edited group, and clear it on close (adjusting state during render).
   const seedId = open ? (group?.id ?? 0) : null
   if (seedId !== loadedId) {
     setLoadedId(seedId)
+    setError("")
     setForm(
       open && group
         ? {
@@ -145,10 +156,23 @@ export function GroupFormDialog({
   const set = <K extends keyof GroupBody>(key: K, value: GroupBody[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
+  // The backend rejects the group unless all three are set (`name, course_id ва
+  // branch_id ҳатмист`), so block the request instead of failing behind the scenes.
+  const missing = !form.name.trim() || !form.course_id || !form.branch_id
+
   const submit = async () => {
-    if (group) await updateGroup({ id: group.id, data: form })
-    else await createGroup(form)
-    onOpenChange(false)
+    if (missing) {
+      setError("Group name, course and branch are required.")
+      return
+    }
+    setError("")
+    try {
+      if (group) await updateGroup({ id: group.id, data: form }).unwrap()
+      else await createGroup(form).unwrap()
+      onOpenChange(false)
+    } catch (err) {
+      setError(apiErrorMessage(err, { fallback: "Could not save the group." }))
+    }
   }
 
   return (
@@ -161,9 +185,9 @@ export function GroupFormDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-5">
-          <Field label="Group name" filled={form.name !== ""}>
+          <Field label="Group name *" filled={form.name !== ""}>
             <Input
-              placeholder="Group name"
+              placeholder="Group name *"
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
             />
@@ -233,21 +257,23 @@ export function GroupFormDialog({
               options={formats.map((f) => ({ value: f, label: f }))}
             />
             <FormSelect
-              label="Course"
+              label="Course *"
               value={form.course_id ? String(form.course_id) : ""}
               onChange={(v) => set("course_id", Number(v))}
               options={(courses?.data ?? []).map((c) => ({ value: String(c.id), label: c.name }))}
+              empty="No courses yet — create one under Courses first."
             />
           </div>
 
           <FormSelect
-            label="Branch"
+            label="Branch *"
             value={form.branch_id ? String(form.branch_id) : ""}
             onChange={(v) => set("branch_id", Number(v))}
             options={(branches?.data ?? []).map((b) => ({
               value: String(b.id),
               label: b.title,
             }))}
+            empty="No branches yet — create one under Branches first."
           />
 
           <Field label="Telegram link" filled={Boolean(form.telegram_link)}>
@@ -258,6 +284,8 @@ export function GroupFormDialog({
             />
           </Field>
         </div>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
         <div className="flex justify-end gap-3">
           <Button onClick={submit} disabled={isCreating || isUpdating}>

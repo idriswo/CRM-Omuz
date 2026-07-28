@@ -1,5 +1,5 @@
 import { api } from "@/store/api"
-import type { Envelope, ListParams } from "./types"
+import { toEnvelope, type Envelope, type ListParams } from "./types"
 
 export type StudentStatus = "active" | "inactive" | "finished"
 export type ContractStatus = "active" | "10_day_left" | "finished"
@@ -159,10 +159,10 @@ export const studentsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getStudents: build.query<Envelope<Student>, StudentsParams | void>({
       query: (params) => ({ url: "/students", params: params ?? {} }),
-      transformResponse: (response: Envelope<Student>) => ({
-        ...response,
-        data: response.data.map(fillFullName),
-      }),
+      transformResponse: (response: Student[] | Envelope<Student>) => {
+        const envelope = toEnvelope(response)
+        return { ...envelope, data: envelope.data.map(fillFullName) }
+      },
       providesTags: ["Students"],
     }),
     getStudent: build.query<Student, number>({

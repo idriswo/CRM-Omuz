@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ChevronLeft, ChevronRight, Plus, Search, ArrowRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import {
   CartesianGrid,
   Line,
@@ -22,7 +22,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useGetBranchChartQuery, useGetBranchesQuery } from "@/store/services"
+import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { Toast } from "@/components/shared/toast"
+import { apiErrorMessage } from "@/lib/api-error"
+import {
+  useDeleteBranchMutation,
+  useGetBranchChartQuery,
+  useGetBranchesQuery,
+  type Branch,
+} from "@/store/services"
+import { BranchDialog } from "./branch-dialog"
 
 const CHART_PALETTE = ["#22b8cf", "#f5a623", "#8b5cf6", "#22c55e", "#ef4444"]
 const MONTH_LABELS = [
@@ -56,11 +65,42 @@ function ChartTooltip({
 }
 
 export function BranchesPage() {
-  const [year, setYear] = useState(2023)
+  const [year, setYear] = useState(new Date().getFullYear())
   const [search, setSearch] = useState("")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<Branch | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Branch | null>(null)
+  const [error, setError] = useState("")
 
   const { data: chart } = useGetBranchChartQuery({ year })
   const { data: branches } = useGetBranchesQuery({ search, year })
+  const [deleteBranch, { isLoading: deleting }] = useDeleteBranchMutation()
+
+  const openCreate = () => {
+    setEditing(null)
+    setDialogOpen(true)
+  }
+
+  const openEdit = (branch: Branch) => {
+    setEditing(branch)
+    setDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    const branch = pendingDelete
+    setPendingDelete(null)
+    try {
+      await deleteBranch(branch.id).unwrap()
+    } catch (err) {
+      setError(
+        apiErrorMessage(err, {
+          conflict: `"${branch.title}" can't be deleted — it still has groups or students attached.`,
+          fallback: `Could not delete "${branch.title}".`,
+        })
+      )
+    }
+  }
 
   const seriesColors: Record<string, string> = Object.fromEntries(
     (branches?.data ?? []).map((b, i) => [b.title, CHART_PALETTE[i % CHART_PALETTE.length]])
@@ -87,7 +127,7 @@ export function BranchesPage() {
               <ChevronRight className="size-4" />
             </button>
           </div>
-          <Button size="lg">
+          <Button size="lg" onClick={openCreate}>
             <Plus /> ADD NEW
           </Button>
         </div>
@@ -170,15 +210,50 @@ export function BranchesPage() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon">
-                    <ArrowRight className="size-4 text-primary" />
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Edit ${branch.title}`}
+                      onClick={() => openEdit(branch)}
+                    >
+                      <Pencil className="size-4 text-primary" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${branch.title}`}
+                      onClick={() => setPendingDelete(branch)}
+                    >
+                      <Trash2 className="size-4 text-destructive" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
+            {branches?.data?.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
+                  No branches yet.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </Card>
+
+      <BranchDialog open={dialogOpen} onOpenChange={setDialogOpen} branch={editing} />
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={`Delete "${pendingDelete?.title}"?`}
+        description="This branch will be removed permanently."
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
+
+      {error && <Toast message={error} variant="error" onClose={() => setError("")} />}
     </div>
   )
 }

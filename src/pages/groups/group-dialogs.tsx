@@ -19,9 +19,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { SearchInput } from "@/components/shared/search-input"
+import { apiErrorMessage } from "@/lib/api-error"
 import {
   useCreateGroupMutation,
   useEnrollStudentMutation,
+  useGetBranchesQuery,
+  useGetCoursesQuery,
   useGetGroupsQuery,
   useGetStudentsQuery,
 } from "@/store/services"
@@ -40,8 +43,9 @@ export function NewStudentDialog({
 }) {
   const [search, setSearch] = useState("")
   const [picked, setPicked] = useState<number[]>([])
+  const [error, setError] = useState("")
   const { data } = useGetStudentsQuery({ search, limit: 30 }, { skip: !open })
-  const [enroll] = useEnrollStudentMutation()
+  const [enroll, { isLoading }] = useEnrollStudentMutation()
 
   const toggle = (id: number) =>
     setPicked((prev) => (prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]))
@@ -74,11 +78,21 @@ export function NewStudentDialog({
           ))}
         </div>
 
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
         <DialogFooter>
           <Button
-            disabled={!picked.length}
+            disabled={!picked.length || isLoading}
             onClick={async () => {
-              for (const id of picked) await enroll({ student_id: id, group_id: groupId })
+              setError("")
+              try {
+                for (const id of picked) {
+                  await enroll({ student_id: id, group_id: groupId }).unwrap()
+                }
+              } catch (err) {
+                setError(apiErrorMessage(err, { fallback: "Could not add the students." }))
+                return
+              }
               setPicked([])
               onOpenChange(false)
               onDone("Students are success added!")
@@ -95,7 +109,9 @@ export function NewStudentDialog({
   )
 }
 
-/** Quick group creation: name plus the start and end dates. */
+/** Quick group creation: name, course, branch and the start/end dates.
+ * Course and branch are here because `POST /groups` rejects the request without
+ * them (`name, course_id ва branch_id ҳатмист`). */
 export function NewGroupDialog({
   open,
   onOpenChange,
@@ -108,7 +124,36 @@ export function NewGroupDialog({
   const [name, setName] = useState("")
   const [start, setStart] = useState("")
   const [end, setEnd] = useState("")
-  const [createGroup] = useCreateGroupMutation()
+  const [courseId, setCourseId] = useState("")
+  const [branchId, setBranchId] = useState("")
+  const [error, setError] = useState("")
+  const [createGroup, { isLoading }] = useCreateGroupMutation()
+  const { data: courses } = useGetCoursesQuery({ limit: 200 }, { skip: !open })
+  const { data: branches } = useGetBranchesQuery(undefined, { skip: !open })
+
+  const submit = async () => {
+    setError("")
+    try {
+      await createGroup({
+        name: name.trim(),
+        start_date: start,
+        end_date: end,
+        duration: "",
+        required_students: 0,
+        course_id: Number(courseId),
+        branch_id: Number(branchId),
+      }).unwrap()
+      setName("")
+      setStart("")
+      setEnd("")
+      setCourseId("")
+      setBranchId("")
+      onOpenChange(false)
+      onDone("Group is success created!")
+    } catch (err) {
+      setError(apiErrorMessage(err, { fallback: "Could not create the group." }))
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,31 +163,54 @@ export function NewGroupDialog({
         </DialogHeader>
 
         <Input placeholder="Group name" value={name} onChange={(e) => setName(e.target.value)} />
+
+        <Select value={courseId} onValueChange={setCourseId}>
+          <SelectTrigger className="h-11 w-full">
+            <SelectValue placeholder="Course" />
+          </SelectTrigger>
+          <SelectContent>
+            {(courses?.data ?? []).length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">
+                No courses yet — create one under Courses first.
+              </p>
+            ) : (
+              (courses?.data ?? []).map((course) => (
+                <SelectItem key={course.id} value={String(course.id)}>
+                  {course.name}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+
+        <Select value={branchId} onValueChange={setBranchId}>
+          <SelectTrigger className="h-11 w-full">
+            <SelectValue placeholder="Branch" />
+          </SelectTrigger>
+          <SelectContent>
+            {(branches?.data ?? []).length === 0 ? (
+              <p className="px-3 py-2 text-sm text-muted-foreground">
+                No branches yet — create one under Branches first.
+              </p>
+            ) : (
+              (branches?.data ?? []).map((branch) => (
+                <SelectItem key={branch.id} value={String(branch.id)}>
+                  {branch.title}
+                </SelectItem>
+              ))
+            )}
+          </SelectContent>
+        </Select>
+
         <div className="grid grid-cols-2 gap-4">
           <Input type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
         </div>
 
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
         <DialogFooter>
-          <Button
-            disabled={!name}
-            onClick={async () => {
-              await createGroup({
-                name,
-                start_date: start,
-                end_date: end,
-                duration: "",
-                required_students: 0,
-                course_id: null,
-                branch_id: null,
-              })
-              setName("")
-              setStart("")
-              setEnd("")
-              onOpenChange(false)
-              onDone("Group is success created!")
-            }}
-          >
+          <Button disabled={!name.trim() || !courseId || !branchId || isLoading} onClick={submit}>
             Create
           </Button>
           <Button variant="outline" className="text-primary" onClick={() => onOpenChange(false)}>

@@ -33,7 +33,7 @@ export function StudentCoinsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data?.history.map((entry) => (
+            {data?.history?.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell>{entry.date}</TableCell>
                 <TableCell className={entry.amount >= 0 ? "text-success" : "text-destructive"}>

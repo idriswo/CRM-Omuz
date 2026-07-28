@@ -1,5 +1,5 @@
 import { api } from "@/store/api"
-import type { Envelope, ListParams } from "./types"
+import { toEnvelope, type Envelope, type ListParams } from "./types"
 
 /** Exactly what `GET /employees` returns (see backend prisma model `Employee`). */
 export interface Employee {
@@ -51,10 +51,10 @@ export const employeesApi = api.injectEndpoints({
   endpoints: (build) => ({
     getEmployees: build.query<Envelope<Employee>, EmployeesParams | void>({
       query: (params) => ({ url: "/employees", params: params ?? {} }),
-      transformResponse: (response: Envelope<RawEmployee>) => ({
-        ...response,
-        data: response.data.map(withFullName),
-      }),
+      transformResponse: (response: RawEmployee[] | Envelope<RawEmployee>) => {
+        const envelope = toEnvelope(response)
+        return { ...envelope, data: envelope.data.map(withFullName) }
+      },
       providesTags: ["Employees"],
     }),
     getEmployee: build.query<Employee, number>({

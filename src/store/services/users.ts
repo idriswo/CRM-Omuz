@@ -1,5 +1,5 @@
 import { api } from "@/store/api"
-import type { Envelope, ListParams } from "./types"
+import { toEnvelope, type Envelope, type ListParams } from "./types"
 
 export interface AdminUser {
   id: number
@@ -49,10 +49,10 @@ export const usersApi = api.injectEndpoints({
   endpoints: (build) => ({
     getUsers: build.query<Envelope<AdminUser>, ListParams | void>({
       query: (params) => ({ url: "/users", params: params ?? {} }),
-      transformResponse: (response: Envelope<AdminUser>) => ({
-        ...response,
-        data: response.data.map(normalizeUser),
-      }),
+      transformResponse: (response: AdminUser[] | Envelope<AdminUser>) => {
+        const envelope = toEnvelope(response)
+        return { ...envelope, data: envelope.data.map(normalizeUser) }
+      },
       providesTags: ["Users"],
     }),
     createUser: build.mutation<CreateUserResponse, UserBody>({

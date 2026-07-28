@@ -3,7 +3,6 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Table,
   TableBody,
@@ -55,8 +54,8 @@ function ChartTooltip({
 }
 
 export function AccountantPage() {
-  const [year, setYear] = useState(2024)
-  const [month, setMonth] = useState("May")
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [month, setMonth] = useState("")
   const [status, setStatus] = useState("all")
   const [branch, setBranch] = useState("all")
   const [date, setDate] = useState("July 2023")
@@ -72,10 +71,10 @@ export function AccountantPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="size-2.5 rounded-full bg-emerald-500" /> Income
+              <span className="size-2.5 rounded-full bg-emerald-500" /> Salary
             </div>
             <div className="flex items-center gap-2 text-sm font-medium">
-              <span className="size-2.5 rounded-full bg-red-500" /> Expense
+              <span className="size-2.5 rounded-full bg-red-500" /> Avans
             </div>
           </div>
           <div className="flex items-center gap-1 rounded-lg border border-input bg-card px-2 py-1.5">
@@ -105,8 +104,8 @@ export function AccountantPage() {
               <XAxis dataKey="month" tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }} />
               <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" strokeWidth={2} fill="url(#accountantIncome)" />
-              <Area type="monotone" dataKey="expense" name="Expense" stroke="#ef4444" strokeWidth={2} fill="url(#accountantExpense)" />
+              <Area type="monotone" dataKey="salary" name="Salary" stroke="#22c55e" strokeWidth={2} fill="url(#accountantIncome)" />
+              <Area type="monotone" dataKey="avans" name="Avans" stroke="#ef4444" strokeWidth={2} fill="url(#accountantExpense)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -136,38 +135,35 @@ export function AccountantPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Started at</TableHead>
-              <TableHead>Finished at</TableHead>
-              <TableHead>Total income</TableHead>
-              <TableHead>Total expense</TableHead>
-              <TableHead>Paid</TableHead>
-              <TableHead>Not paid</TableHead>
-              <TableHead>Net</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Full name</TableHead>
+              <TableHead>Position</TableHead>
+              <TableHead>Total salary</TableHead>
+              <TableHead>Total avans</TableHead>
+              <TableHead>Remaining</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             )}
-            {data?.data?.map((a) => (
-              <TableRow key={a.id}>
-                <TableCell>{a.started_at}</TableCell>
-                <TableCell>{a.finished_at}</TableCell>
-                <TableCell>{a.total_income}</TableCell>
-                <TableCell>{a.total_expense}</TableCell>
-                <TableCell>{a.paid}</TableCell>
-                <TableCell>{a.not_paid}</TableCell>
-                <TableCell>{a.net}</TableCell>
-                <TableCell>{a.branch}</TableCell>
-                <TableCell>
-                  <Badge variant={a.status === "Inprogress" ? "default" : "secondary"}>{a.status}</Badge>
+            {!isLoading && (data?.data?.length ?? 0) === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  No salary or avans records yet.
                 </TableCell>
+              </TableRow>
+            )}
+            {data?.data?.map((a) => (
+              <TableRow key={a.employee_id}>
+                <TableCell className="font-medium">{a.full_name}</TableCell>
+                <TableCell>{a.position}</TableCell>
+                <TableCell>{a.total_salary.toLocaleString()}</TableCell>
+                <TableCell>{a.total_avans.toLocaleString()}</TableCell>
+                <TableCell>{(a.total_salary - a.total_avans).toLocaleString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>

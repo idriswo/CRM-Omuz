@@ -1,4 +1,5 @@
 import { api } from "@/store/api"
+import { toList } from "./types"
 
 export interface SmsTemplate {
   id: number
@@ -50,6 +51,7 @@ export const smsApi = api.injectEndpoints({
   endpoints: (build) => ({
     getSmsTemplates: build.query<{ data: SmsTemplate[] }, void>({
       query: () => ({ url: "/email/templates" }),
+      transformResponse: toList<SmsTemplate>,
       providesTags: ["SmsTemplates"],
     }),
     createSmsTemplate: build.mutation<SmsTemplate, { title: string; description: string }>({
@@ -67,9 +69,11 @@ export const smsApi = api.injectEndpoints({
 
     getSmsGroups: build.query<{ data: SmsGroup[] }, void>({
       query: () => ({ url: "/email/recipients/group" }),
+      transformResponse: toList<SmsGroup>,
     }),
     getSmsRecipients: build.query<{ data: SmsPerson[] }, { type: Exclude<SmsRecipientType, "group">; search?: string }>({
       query: ({ type, search }) => ({ url: `/email/recipients/${type}`, params: { search } }),
+      transformResponse: toList<SmsPerson>,
     }),
 
     sendSms: build.mutation<

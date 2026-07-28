@@ -395,7 +395,7 @@ function GroupsRoadmapCard() {
     <Card>
       <CardHeading>Groups roadmap</CardHeading>
       <div className="flex flex-col gap-4">
-        {data?.roadmap.map((group) => (
+        {data?.roadmap?.map((group) => (
           <RoadmapCard key={group.id} group={group} />
         ))}
       </div>

@@ -1,5 +1,10 @@
 import { api } from "@/store/api"
-import type { Envelope } from "./types"
+import { toEnvelope, type Envelope } from "./types"
+
+const MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+]
 
 export interface Payment {
   id: number
@@ -83,30 +88,34 @@ export interface NetItem {
   amount: number
 }
 
+/** Exactly what `GET /accounting/accountant` returns — one row per employee that
+ * has a salary or an advance on record (bare array, no envelope). */
 export interface AccountantItem {
-  id: number
-  started_at: string
-  finished_at: string
-  total_income: number
-  total_expense: number
-  paid: number
-  not_paid: number
-  net: number
-  branch: string
-  status: "Inprogress" | "Archive"
+  employee_id: number
+  full_name: string
+  position: string
+  total_salary: number
+  total_avans: number
 }
 
 export interface AccountantChartPoint {
   month: string
-  income: number
-  expense: number
+  salary: number
+  avans: number
 }
 
+/** Exactly what `GET /accounting/overview` returns. The salary fields are only
+ * present for roles allowed to see them, hence optional. */
 export interface AccountingStats {
-  total_payment: number
-  paid_amount: number
-  not_paid: number
-  net: number
+  total_income: number
+  total_expenses: number
+  budget_allocated: number
+  budget_spent: number
+  total_debt: number
+  total_debt_paid: number
+  total_salaries?: number
+  total_avans?: number
+  net?: number
 }
 
 export interface AccountingChartPoint {
@@ -115,22 +124,13 @@ export interface AccountingChartPoint {
   Expense: number
 }
 
-export interface StudentsPaymentMember {
-  id: number
+/** One row per student that has at least one payment. */
+export interface StudentsPaymentRow {
+  student_id: number
   full_name: string
-  phone: string
-  sum: number
-  status: "Paid" | "Not paid"
-}
-
-export interface StudentsPaymentGroup {
-  id: number
-  group: string
-  students: number
-  not_paid: number
-  total: number
-  not_paid_amount: number
-  members: StudentsPaymentMember[]
+  total_amount: number
+  total_paid: number
+  remaining: number
 }
 
 export const accountingApi = api.injectEndpoints({
@@ -140,12 +140,23 @@ export const accountingApi = api.injectEndpoints({
     }),
     getAccountingChart: build.query<{ data: AccountingChartPoint[] }, { year: number }>({
       query: (params) => ({ url: "/accounting/overview/chart", params }),
+      // `{ "5": { income, expenses, ... } }` keyed by month number.
+      transformResponse: (
+        response: Record<string, { income?: number; expenses?: number; salaries?: number; avans?: number }>
+      ) => ({
+        data: MONTHS.map((month, i) => {
+          const row = response?.[String(i + 1)]
+          return {
+            month,
+            Income: row?.income ?? 0,
+            Expense: (row?.expenses ?? 0) + (row?.salaries ?? 0) + (row?.avans ?? 0),
+          }
+        }),
+      }),
     }),
-    getStudentsPayment: build.query<
-      { donut: { total: number; paid_percent: number; paid_count: number; not_paid_percent: number; not_paid_count: number }; groups: StudentsPaymentGroup[] },
-      void
-    >({
+    getStudentsPayment: build.query<Envelope<StudentsPaymentRow>, void>({
       query: () => ({ url: "/accounting/overview/students-payment" }),
+      transformResponse: toEnvelope<StudentsPaymentRow>,
     }),
 
     getPayments: build.query<Envelope<Payment>, { search?: string; group_id?: string; branch_id?: string; status?: string } | void>({
@@ -231,9 +242,18 @@ export const accountingApi = api.injectEndpoints({
 
     getAccountant: build.query<Envelope<AccountantItem>, { status?: string; branch_id?: string } | void>({
       query: (params) => ({ url: "/accounting/accountant", params: params ?? {} }),
+      transformResponse: toEnvelope<AccountantItem>,
     }),
     getAccountantChart: build.query<{ data: AccountantChartPoint[] }, { year: number }>({
       query: (params) => ({ url: "/accounting/accountant/chart", params }),
+      // `{ "5": { salary, avans } }` keyed by month number — expand to 12 points.
+      transformResponse: (response: Record<string, { salary?: number; avans?: number }>) => ({
+        data: MONTHS.map((month, i) => ({
+          month,
+          salary: response?.[String(i + 1)]?.salary ?? 0,
+          avans: response?.[String(i + 1)]?.avans ?? 0,
+        })),
+      }),
     }),
   }),
 })

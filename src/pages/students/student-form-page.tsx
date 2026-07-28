@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { apiErrorMessage } from "@/lib/api-error"
 import { PhotoCard } from "@/components/shared/photo-card"
 import { RadioPills } from "@/components/shared/radio-pills"
 import { SegmentedToggle } from "@/components/shared/segmented-toggle"
@@ -53,6 +54,7 @@ export function StudentFormPage() {
 
   const [form, setForm] = useState<StudentBody>(emptyForm)
   const [loadedId, setLoadedId] = useState<number | null>(null)
+  const [error, setError] = useState("")
 
   // Seed the form once the fetched student arrives (adjusting state during render).
   if (student && loadedId !== student.id) {
@@ -85,12 +87,22 @@ export function StudentFormPage() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault()
-    if (isEdit) {
-      await updateStudent({ id: Number(id), data: form })
-    } else {
-      await createStudent(form)
+    setError("")
+    try {
+      if (isEdit) {
+        await updateStudent({ id: Number(id), data: form }).unwrap()
+      } else {
+        await createStudent(form).unwrap()
+      }
+      navigate("/students")
+    } catch (err) {
+      setError(
+        apiErrorMessage(err, {
+          conflict: "A student with this email or phone already exists.",
+          fallback: "Could not save the student.",
+        })
+      )
     }
-    navigate("/students")
   }
 
   return (
@@ -261,6 +273,8 @@ export function StudentFormPage() {
 
         <PhotoCard photo={form.photo} onChange={(photo) => set("photo", photo)} />
       </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="flex items-center gap-3">
         <Button type="submit" size="lg" disabled={isCreating || isUpdating}>
